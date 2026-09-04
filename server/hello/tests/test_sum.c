@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include "sum.h"
+#include "../src/sum.h"
 
 Test(sum, positive_numbers)
 {

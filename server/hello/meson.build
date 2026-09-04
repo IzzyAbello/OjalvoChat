@@ -1,12 +1,9 @@
 project('ojalvochat', 'c')
 
-criterion = dependency('criterion')
+subdir('src')
+subdir('tests')
 
-test_sum = executable (
-    'test_sum',
-    'sum.c', 
-    'test_sum.c', 
-    dependencies: criterion
+run_target(
+    'check',
+    command: ['meson', 'test', '--verbose']
 )
-
-test('sum', test_sum)
