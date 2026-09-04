@@ -1,8 +1,24 @@
-# include "sum.h"
+#include <criterion/criterion.h>
+#include "sum.h"
 
-int main () 
+Test(sum, positive_numbers)
 {
-    if (sum(5, 4) != 9)
-        return 1;
-    return 0;
+    cr_assert(sum(5, 4) == 9);
+    cr_assert(sum(4, 5) == 9);
+    cr_assert(sum(5, 5) == 10);
+}
+
+Test (sum, zero)
+{
+    cr_assert(sum(0, 0) == 0);
+}
+
+Test(sum, negative_numbers) 
+{
+    cr_assert(sum(-10, -3) == -13);
+}
+
+Test(sum, mixed_numbers)
+{
+    cr_assert(sum(-2, 4) == 2);
 }
