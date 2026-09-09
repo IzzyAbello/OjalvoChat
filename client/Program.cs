@@ -2,7 +2,7 @@
 using System.Text;
 
 const string ServerHost = "127.0.0.1";
-const int ServerPort = 9001;
+const int ServerPort = 1234;
 
 using TcpClient client = new TcpClient();
 Console.WriteLine($"Conectando a {ServerHost}:{ServerPort}...");

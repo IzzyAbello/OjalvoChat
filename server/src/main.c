@@ -3,65 +3,85 @@
  * https://www.geeksforgeeks.org/computer-networks/simple-client-server-application-in-c/
  */
 
-#include <netinet/in.h> //structure for storing address information
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h> //for socket APIs
+#include <sys/socket.h>
 #include <sys/types.h>
+#include <string.h>
+#include <stdarg.h>
+
+#define DEFAULT_PORT 1234
+#define BUFFER_SIZE 512
+
+void notify(const char *format, ...) 
+{
+    va_list args;
+    va_start(args, format);
+
+    printf("[SERVER]: ");
+    vprintf(format, args);
+    printf("\n");
+
+    va_end(args);
+}
+
+void notify_error(char* message) 
+{
+    perror(strcat("[SERVER - ERROR] ", message));
+}
+
+int set_port(int argc, char const* argv[]) 
+{
+    // Implement here a safe method...
+    return DEFAULT_PORT;
+}
 
 int main(int argc, char const* argv[])
 {
+    int port = set_port(argc, argv);
 
-    // create server socket similar to what was done in
-    // client program
     int servSockD = socket(AF_INET, SOCK_STREAM, 0);
     if (servSockD < 0)
     {
-        perror("[SERVER] Error al crear el socket");
+        notify_error("Error al crear el socket");
         return 1;
     }
-    printf("[SERVER] Socket creado correctamente.\n");
+    notify("Socket creado correctamente.\n");
 
 
-    // string store data to send to client
-    char serMsg[255] = "Message from the server to the "
-                       "client \'Hello Client\' ";
+    char serMsg[BUFFER_SIZE] = "Message from the server to the client \'Hello Client\' ";
 
-    // define server address
     struct sockaddr_in servAddr;
 
     servAddr.sin_family = AF_INET;
-    servAddr.sin_port = htons(9001);
+    servAddr.sin_port = htons(port);
     servAddr.sin_addr.s_addr = INADDR_ANY;
 
-    // bind socket to the specified IP and port
-    printf("[SERVER] Vinculando socket al puerto 9001...\n");
+    notify("Vinculando socket al puerto %d...\n", port);
     if (bind(servSockD, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
     {
-        perror("[SERVER] Error en bind");
+        notify_error("Error en bind");
         return 1;
     }
-    printf("[SERVER] Socket vinculado al puerto 9001.\n");
+    notify("Socket vinculado al puerto %d.\n", port);
 
-    // listen for connections
-    printf("[SERVER] Esperando conexiones...\n");
-    if (listen(servSockD, 1) < 0)
+    notify("Esperando conexiones...\n");
+    if (listen(servSockD, SOMAXCONN) < 0)
     {
-        perror("[SERVER] Error en listen");
+        notify_error("Error en listen");
         return 1;
     }
-    printf("[SERVER] Servidor escuchando en el puerto 9001.\n");
+    notify("Servidor escuchando en el puerto %d.\n", port);
 
-    // integer to hold client socket.
-    printf("[SERVER] Esperando a que se conecte un cliente...\n");
+    notify("Esperando a que se conecte un cliente...\n");
     int clientSocket = accept(servSockD, NULL, NULL);
     if (clientSocket < 0) {
-        perror("[SERVER] Error en accept");
+        notify_error("Error en accept");
         return 1;
     }
-    printf("[SERVER] ¡Cliente conectado!\n");
+    notify("¡Cliente conectado!\n");
 
-    // send's messages to client socket
     send(clientSocket, serMsg, sizeof(serMsg), 0);
 
     return 0;

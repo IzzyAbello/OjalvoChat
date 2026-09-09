@@ -1,7 +1,7 @@
 # OjalvoChat
 Primer Proyecto MyP-CS-FC-UNAM
 
-## Comandos
+## Comandos del Servidor
 
 ### Instalar
 
@@ -32,3 +32,16 @@ meson compile -C build check
 ./build/src/ojalvochat
 ```
 
+## Comandos del Cliente
+
+### Instalar
+
+```bash/fish
+dotnet build
+```
+
+### Ejecutar
+
+```bash/fish
+dotnet run
+```
