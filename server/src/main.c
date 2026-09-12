@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -45,8 +46,8 @@ int main(int argc, char const *argv[])
         return EXIT_FAILURE;
     }
 
-    char message[SERVER_BUFFER_SIZE] = "Message from the server to the client 'Hello Client' ";
-    server_send(&server, client_fd, message, sizeof(message));
+    char* message = "Message from the server to the client 'Hello Client'\n";
+    server_send(&server, client_fd, message, strlen(message));
 
     close(client_fd);
     server_close(&server);

@@ -6,8 +6,9 @@
 #include <stddef.h>
 #include <sys/types.h>
 
+#include "message_buffer.h"
+
 #define SERVER_DEFAULT_PORT 1234
-#define SERVER_BUFFER_SIZE 1024
 
 typedef struct 
 {

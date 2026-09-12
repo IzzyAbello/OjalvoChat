@@ -1,6 +1,7 @@
 server_lib = library (
     'server_lib',
-    'server.c'
+    'server.c',
+    'message_buffer.c'
 )
 
 ojalvochat = executable(

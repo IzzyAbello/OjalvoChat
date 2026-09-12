@@ -8,3 +8,12 @@ test_server_parse_args = executable (
 )
 
 test('server_parse_args', test_server_parse_args)
+
+test_message_buffer = executable (
+    'test_message_buffer',
+    'test_message_buffer.c',
+    dependencies: criterion,
+    link_with: server_lib
+)
+
+test('message_buffer', test_message_buffer)

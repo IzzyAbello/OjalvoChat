@@ -11,7 +11,11 @@ Console.WriteLine("Conectado.");
 
 using NetworkStream stream = client.GetStream();
 
-byte[] buffer = new byte[255];
+using StreamReader reader = new StreamReader(stream, Encoding.UTF8);
+string? message = reader.ReadLine();
+
+
+/*byte[] buffer = new byte[255];
 int bytesRead = stream.Read(buffer, 0, buffer.Length);
 
 string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
@@ -19,6 +23,6 @@ int nullIndex = message.IndexOf('\0');
 if (nullIndex >= 0)
 {
     message = message[..nullIndex];
-}
+}*/
 
 Console.WriteLine($"Mensaje del servidor: {message}");
