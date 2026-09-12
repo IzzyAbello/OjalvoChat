@@ -8,16 +8,22 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define SERVER_LOG_BUFFER_SIZE 256
+
 static void log_info(bool enabled, const char *format, ...)
 {
-    va_list args;
     if (!enabled) return;
-
+    
+    va_list args;
     va_start(args, format);
-    printf("[SERVER]: ");
-    vprintf(format, args);
-    printf("\n");
+    
+    char buffer[SERVER_LOG_BUFFER_SIZE];
+    
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
     va_end(args);
+
+    printf("[SERVER]: %s\n", buffer);
 }
 
 static void log_error(const char *message)
