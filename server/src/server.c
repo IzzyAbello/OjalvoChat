@@ -10,7 +10,7 @@
 
 #define SERVER_LOG_BUFFER_SIZE 256
 
-static void log_info(bool enabled, const char *format, ...)
+static void log_info(bool enabled, const char* format, ...)
 {
     if (!enabled) return;
     
@@ -26,7 +26,7 @@ static void log_info(bool enabled, const char *format, ...)
     printf("[SERVER]: %s\n", buffer);
 }
 
-static void log_error(const char *message)
+static void log_error(const char* message)
 {
     char full_message[256];
     snprintf(
@@ -38,7 +38,7 @@ static void log_error(const char *message)
     perror(full_message);
 }
 
-Server_Options server_parse_args(int argc, char const *argv[])
+Server_Options server_parse_args(int argc, char const* argv[])
 {
     Server_Options options = {
         .show_help = false,
@@ -71,7 +71,7 @@ Server_Options server_parse_args(int argc, char const *argv[])
     return options;
 }
 
-int server_resolve_port(const Server_Options *options)
+int server_resolve_port(const Server_Options* options)
 {
     if (options->port_arg == NULL)
         return SERVER_DEFAULT_PORT;
@@ -103,7 +103,7 @@ int server_resolve_port(const Server_Options *options)
     return (int)parsed;
 }
 
-int server_init(Server *server, int port, bool log_enabled)
+int server_init(Server* server, int port, bool log_enabled)
 {
     server->port = port;
     server->log_enabled = log_enabled;
@@ -118,6 +118,16 @@ int server_init(Server *server, int port, bool log_enabled)
     }
     log_info(server->log_enabled, "Socket creado correctamente.");
 
+    int reuse_addr = 1;
+    if (setsockopt(
+            server->socket_fd,
+            SOL_SOCKET,
+            SO_REUSEADDR,
+            &reuse_addr,
+            sizeof(reuse_addr)
+        ) < 0)
+        log_error("Error al configurar SO_REUSEADDR.");
+
     memset(&server->address, 0, sizeof(server->address));
     server->address.sin_family = AF_INET;
     server->address.sin_port = htons((uint16_t)port);
@@ -126,7 +136,7 @@ int server_init(Server *server, int port, bool log_enabled)
     return 0;
 }
 
-int server_bind_and_listen(Server *server, int backlog) 
+int server_bind_and_listen(Server* server, int backlog) 
 {
     log_info(server->log_enabled, "Vinculando socket al puerto %d...", server->port);
     if (bind(server->socket_fd,
@@ -149,12 +159,13 @@ int server_bind_and_listen(Server *server, int backlog)
     return 0;
 }
 
-int server_accept_client(const Server *server) 
+int server_accept_client(const Server* server) 
 {
     log_info(server->log_enabled, "Esperando a que se conecte un cliente...");
     int client_fd = accept(server->socket_fd, NULL, NULL);
     if (client_fd < 0) 
     {
+        if (errno == EINTR) return -2;
         log_error("Error en accept...");
         return -1;
     }
@@ -176,7 +187,7 @@ ssize_t server_send(
     return sent;
 }
 
-void server_close(Server *server) 
+void server_close(Server* server) 
 {
     if (server->socket_fd >= 0)
     {

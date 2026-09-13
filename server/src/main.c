@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +11,17 @@
 
 #include "server.h"
 
+static volatile sig_atomic_t g_shutdown_requested = 0;
+
+static void handle_sigint(int signum) 
+{
+    (void)signum;
+
+    const char bye[] = "\n¡Hasta pronto!\n";
+    write(STDOUT_FILENO, bye, sizeof(bye) - 1);
+    
+    g_shutdown_requested = 1;
+}
 
 typedef struct
 {
@@ -73,11 +86,19 @@ int main(int argc, char const *argv[])
 
     signal(SIGPIPE, SIG_IGN);
 
+    struct sigaction sigint_action;
+    memset(&sigint_action, 0, sizeof(sigint_action));
+    sigint_action.sa_handler = handle_sigint; // puntero a función
+    sigemptyset(&sigint_action.sa_mask);
+    sigint_action.sa_flags = 0;
+    sigaction(SIGINT, &sigint_action, NULL);
+
     for (;;)
     {
         int client_fd = server_accept_client(&server);
         if (client_fd < 0)
         {
+            if (g_shutdown_requested) break;
             if (errno == EINTR) continue;
             printf("[SERVER - ERROR]: FALLA DEL SOCKET DEL SERVER.");
             break;
