@@ -1,5 +1,4 @@
 #include <string.h>
-#include <ctype.h>
 
 #include "message_buffer.h"
 
@@ -51,8 +50,8 @@ bool message_is_valid(const char *text, size_t length)
     for (size_t i = 0; i < length; i++)
     {
         char rp = text[i];
-        if (rp == '\0' || rp == '\t' || rp == '\r'|| !isprint(rp))
-            return false;
+        if (rp == '\0' || rp == '\t' || rp == '\r'
+         || rp == '\n' || rp == '\b') return false;
     }
     return true;
 }
@@ -64,8 +63,8 @@ void message_buffer_sanitize(char *text, size_t *length)
     for (size_t read_pos = 0; read_pos < *length; read_pos++)
     {
         char rp = text[read_pos];
-        if (rp == '\0' || rp == '\t' || rp == '\r'|| !isprint(rp))
-            continue;
+        if (rp == '\0' || rp == '\t' || rp == '\r'
+         || rp == '\n' || rp == '\b') continue;
         text[write_pos++] = text[read_pos];
     }
  

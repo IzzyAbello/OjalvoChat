@@ -385,3 +385,27 @@ Test(message_buffer, multiple_messages_in_one_append)
     cr_assert_not(message_buffer_extract(&buf, out, sizeof(out), &out_length));
     cr_assert_eq(buf.length, 0);
 }
+
+Test(message_is_valid, accepts_diverse_valid_utf8)
+{
+    /* "café 中 😀" UTF-8 */
+    char text[] = "caf\xc3\xa9 \xe4\xb8\xad \xf0\x9f\x98\x80";
+    cr_assert(message_is_valid(text, strlen(text)));
+}
+
+Test(message_buffer_sanitize, preserves_diverse_valid_utf8)
+{
+    char text[32];
+    memcpy(
+        text,
+        "caf\xc3\xa9 \xe4\xb8\xad \xf0\x9f\x98\x80",
+        strlen("caf\xc3\xa9 \xe4\xb8\xad \xf0\x9f\x98\x80"));
+    /* "café 中 😀" UTF-8 */
+    size_t length = strlen("caf\xc3\xa9 \xe4\xb8\xad \xf0\x9f\x98\x80");
+    size_t original_length = length;
+ 
+    message_buffer_sanitize(text, &length);
+ 
+    cr_assert_eq(length, original_length);
+    cr_assert(memcmp(text, "caf\xc3\xa9 \xe4\xb8\xad \xf0\x9f\x98\x80", original_length) == 0);
+}

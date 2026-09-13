@@ -43,5 +43,5 @@ dotnet build
 ### Ejecutar
 
 ```bash/fish
-dotnet run
+dotnet run [PUERTO] [CANTIDAD DE CLIENTES]
 ```
