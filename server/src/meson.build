@@ -4,6 +4,7 @@ server_lib = library (
     'server_lib',
     'server.c',
     'message_buffer.c',
+    'client_handler.c',
     dependencies: threads_dep
 )
 

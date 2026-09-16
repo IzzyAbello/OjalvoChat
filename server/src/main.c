@@ -10,6 +10,7 @@
 #include <signal.h>
 
 #include "server.h"
+#include "client_handler.h"
 
 static volatile sig_atomic_t g_shutdown_requested = 0;
 
@@ -21,34 +22,6 @@ static void handle_sigint(int signum)
     write(STDOUT_FILENO, bye, sizeof(bye) - 1);
     
     g_shutdown_requested = 1;
-}
-
-typedef struct
-{
-    Server *server;
-    int client_fd;
-}
-Client_Args;
- 
-static void* handle_client(void *arg)
-{
-    Client_Args* client_args = (Client_Args*)arg;
-    int client_fd = client_args->client_fd;
-    Server* server = client_args->server;
-
-    printf(
-        "[DEMO] Hilo %lu: empieza a atender al cliente (fd=%d)\n",
-        (unsigned long)pthread_self(),
-        client_fd
-    );
-    sleep(2); // probar que si funcionan los hilos.
- 
-    const char* message = "Message from the server to the client 'Hello Client'\n";
-    server_send(server, client_fd, message, strlen(message));
- 
-    close(client_fd);
-    free(client_args);
-    return NULL;
 }
 
 static void show_server_help(void)

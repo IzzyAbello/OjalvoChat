@@ -5,6 +5,7 @@ using System.Diagnostics;
 const string ServerHost = "127.0.0.1";
 int serverPort = (args.Length > 0) ? int.Parse(args[0]) : 1234;
 int clientCount = (args.Length > 1) ? int.Parse(args[1]) : 1;
+string? fixedMessage = (args.Length > 2) ? args[2] : null;
 
 Console.WriteLine($"Conectando {clientCount} cliente(s) a {ServerHost}:{serverPort}...");
 
@@ -16,11 +17,36 @@ async Task ConnectOnceAsync(int clientId)
 
     using NetworkStream stream = client.GetStream();
     using StreamReader reader = new StreamReader(stream, Encoding.UTF8);
-    string? message = await reader.ReadLineAsync();
+    using StreamWriter writer = new StreamWriter(
+        stream,
+        new UTF8Encoding(false)
+    ) { AutoFlush = true };
+    
+    string? greeting = await reader.ReadLineAsync();
+    Console.WriteLine($"[CLIENT - {clientId}] Saludo del servidor: {greeting}");
 
-    if (message != null && message.Any(char.IsControl))
+    string outgoing;
+    if (fixedMessage != null)
+    {
+        outgoing = fixedMessage;
+    }
+    else if (clientCount == 1)
+    {
+        Console.Write($"[CLIENT - {clientId}] Escribe un mensaje para el servidor: ");
+        outgoing = Console.ReadLine() ?? "mensaje predeterminado.";
+    }
+    else
+    {
+        outgoing = $"hola desde cliente -> {clientId}.";
+    }
+
+    await writer.WriteLineAsync(outgoing);
+    
+    string? echoed = await reader.ReadLineAsync();
+
+    if (echoed != null && echoed.Any(char.IsControl))
         Console.WriteLine($"[CLIENT - {clientId}] Mensaje inválido.");
-    Console.WriteLine($"[CLIENT - {clientId}] Mensaje del servidor: {message}");
+    Console.WriteLine($"[CLIENT - {clientId}] Echo del servidor: {echoed}");
 }
 
 Stopwatch stopwatch = Stopwatch.StartNew();
