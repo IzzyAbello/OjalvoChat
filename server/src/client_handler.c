@@ -1,4 +1,5 @@
 #include "client_handler.h"
+#include "message.h"
  
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,15 +49,49 @@ void* handle_client(void* arg)
             message_buffer_sanitize(message, &message_length);
  
             if (message_length == 0) continue;
- 
-            int written = snprintf(response, SERVER_BUFFER_SIZE, "echo: %s\n", message);
-            if (written > 0)
+
+            // Parsear JSON ------ ARREGLAR 
+            Message msg_in;
+            message_init(&msg_in);
+
+            if (!message_from_json(message, &msg_in))
             {
-                size_t response_length = (size_t)written;
-                if (response_length >= SERVER_BUFFER_SIZE)
-                    response_length = SERVER_BUFFER_SIZE - 1; // truncamiento.
+                // Manejar error
+            }
+
+            // Analizar msg_in
+
+            Message msg_out;
+            message_init(&msg_out);
+            
+            // SOLO POR AHORA (ECHO)
+            msg_out = msg_in;
+
+            if (message_to_json(&msg_out, response, SERVER_BUFFER_SIZE))
+            {
+                size_t response_length = strlen(response);
+                if (response_length + 1 < SERVER_BUFFER_SIZE)
+                {
+                    response[response_length] = '\n';
+                    response[response_length + 1] = '\0';
+                    response_length++;
+                }
+                else
+                {
+                    response[SERVER_BUFFER_SIZE - 2] = '\n';
+                    response[SERVER_BUFFER_SIZE - 1] = '\0';
+                    response_length = SERVER_BUFFER_SIZE - 1;
+                }
                 server_send(server, client_fd, response, response_length);
             }
+            else
+            {
+                // Manejar error
+            }
+
+            message_destroy(&msg_in);
+            // QUITAR COMENTARIOS DESPUES 
+            //message_destroy(&msg_out);
         }
     }
  

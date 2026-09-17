@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Diagnostics;
 
 const string ServerHost = "127.0.0.1";
@@ -25,28 +26,31 @@ async Task ConnectOnceAsync(int clientId)
     string? greeting = await reader.ReadLineAsync();
     Console.WriteLine($"[CLIENT - {clientId}] Saludo del servidor: {greeting}");
 
-    string outgoing;
+    string clientName;
     if (fixedMessage != null)
     {
-        outgoing = fixedMessage;
+        clientName = fixedMessage;
     }
     else if (clientCount == 1)
     {
-        Console.Write($"[CLIENT - {clientId}] Escribe un mensaje para el servidor: ");
-        outgoing = Console.ReadLine() ?? "mensaje predeterminado.";
+        Console.Write($"[CLIENT - {clientId}] Identificate con el servidor: ");
+        clientName = Console.ReadLine() ?? $"client{clientId}";
     }
     else
     {
-        outgoing = $"hola desde cliente -> {clientId}.";
+        clientName = $"client{clientId}.";
     }
 
-    await writer.WriteLineAsync(outgoing);
+    string outgoingJSON = JsonSerializer.Serialize(
+        new {type = "IDENTIFY", username = clientName}
+    );
+    await writer.WriteLineAsync(outgoingJSON);
     
-    string? echoed = await reader.ReadLineAsync();
+    string? serverResponse = await reader.ReadLineAsync();
 
-    if (echoed != null && echoed.Any(char.IsControl))
-        Console.WriteLine($"[CLIENT - {clientId}] Mensaje inválido.");
-    Console.WriteLine($"[CLIENT - {clientId}] Echo del servidor: {echoed}");
+    if (serverResponse != null && serverResponse.Any(char.IsControl))
+        Console.WriteLine($"[CLIENT - {clientId}] Mensaje inválido del servidor.");
+    Console.WriteLine($"[CLIENT - {clientId}] Respuesta del servidor: {serverResponse}");
 }
 
 Stopwatch stopwatch = Stopwatch.StartNew();

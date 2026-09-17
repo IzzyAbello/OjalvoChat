@@ -16,6 +16,30 @@ if criterion_dep.found()
         link_with: server_lib
     )
     test('message_buffer', test_message_buffer)
+
+    test_user = executable (
+        'test_user',
+        'test_user.c',
+        dependencies: criterion_dep,
+        link_with: server_lib
+    )
+    test('user', test_user)
+
+    test_message = executable (
+        'test_message',
+        'test_message.c',
+        dependencies: [criterion_dep, cjson_dep],
+        link_with: server_lib
+    )
+    test('message', test_message)
+
+    test_users_table = executable (
+        'test_users_table',
+        'test_users_table.c',
+        dependencies: [criterion_dep, glib_dep],
+        link_with: server_lib
+    )
+    test('users_table', test_users_table)
 else
     warning('Criterion no encontrado: los test no compilarán.\nPor favor instale: \'libcriterion-dev\'.')
 endif
