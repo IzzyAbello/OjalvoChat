@@ -23,23 +23,20 @@ async Task ConnectOnceAsync(int clientId)
         new UTF8Encoding(false)
     ) { AutoFlush = true };
     
-    string? greeting = await reader.ReadLineAsync();
-    Console.WriteLine($"[CLIENT - {clientId}] Saludo del servidor: {greeting}");
-
     string clientName;
     if (fixedMessage != null)
     {
         clientName = fixedMessage;
     }
-    else if (clientCount == 1)
+    else //if (clientCount == 1)
     {
         Console.Write($"[CLIENT - {clientId}] Identificate con el servidor: ");
         clientName = Console.ReadLine() ?? $"client{clientId}";
     }
-    else
+    /*else
     {
         clientName = $"client{clientId}.";
-    }
+    }*/
 
     string outgoingJSON = JsonSerializer.Serialize(
         new {type = "IDENTIFY", username = clientName}

@@ -7,6 +7,8 @@
 #include <sys/types.h>
 
 #include "message_buffer.h"
+#include "users_table.h"
+#include "message.h"
 
 #define SERVER_DEFAULT_PORT 1234
 
@@ -27,18 +29,22 @@ typedef struct
     int port;
     bool log_enabled;
     struct sockaddr_in address;
+    Users_Table users;
 }
 Server;
 
 int server_init(Server *server, int port, bool log_enabled);
+
 int server_bind_and_listen(Server *server, int backlog);
+
 int server_accept_client(const Server *server);
+
 ssize_t server_send(
     const Server *server,
     int client_fd,
-    const char *message,
-    size_t length
+    Message* message
 );
+
 void server_close(Server *server);
 
 #endif

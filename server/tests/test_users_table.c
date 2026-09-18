@@ -69,6 +69,153 @@ Test(users_table, remove_user, .init = setup, .fini = destroy)
     cr_assert_not(remove_again);
 }
 
-// --------------------------------------------------------------------------
-// IMPLEMENTAR --> prueba de concurrencia
-// --------------------------------------------------------------------------
+Test(users_table_iter, iterates_over_all_users)
+{
+    Users_Table table;
+    users_table_init(&table);
+ 
+    users_table_add(&table, "fidel", 1);
+    users_table_add(&table, "raul", 2);
+    users_table_add(&table, "canel", 3);
+ 
+    int seen_count = 0;
+    bool saw_fidel = false, saw_raul = false, saw_canel = false;
+ 
+    Users_Table_Iter iter;
+    users_table_iter_begin(&table, &iter);
+ 
+    User user;
+    while (users_table_iter_next(&iter, &user))
+    {
+        seen_count++;
+        if (strcmp(user.username, "fidel") == 0) saw_fidel = true;
+        if (strcmp(user.username, "raul") == 0) saw_raul = true;
+        if (strcmp(user.username, "canel") == 0) saw_canel = true;
+    }
+ 
+    users_table_iter_end(&iter);
+ 
+    cr_assert_eq(seen_count, 3);
+    cr_assert(saw_fidel);
+    cr_assert(saw_raul);
+    cr_assert(saw_canel);
+ 
+    users_table_destroy(&table);
+}
+ 
+Test(users_table_iter, empty_table_yields_nothing)
+{
+    Users_Table table;
+    users_table_init(&table);
+ 
+    Users_Table_Iter iter;
+    users_table_iter_begin(&table, &iter);
+ 
+    User user;
+    bool got_any = users_table_iter_next(&iter, &user);
+ 
+    users_table_iter_end(&iter);
+ 
+    cr_assert_not(got_any);
+    users_table_destroy(&table);
+}
+ 
+Test(users_table_iter, table_is_usable_again_after_iteration_ends)
+{
+    Users_Table table;
+    users_table_init(&table);
+    users_table_add(&table, "jeffry", 1);
+ 
+    Users_Table_Iter iter;
+    users_table_iter_begin(&table, &iter);
+    User user;
+    while (users_table_iter_next(&iter, &user)) {}
+    users_table_iter_end(&iter);
+ 
+    cr_assert(users_table_add(&table, "epstein", 2));
+ 
+    User found;
+    cr_assert(users_table_find(&table, "epstein", &found));
+ 
+    users_table_destroy(&table);
+}
+ 
+Test(users_table_iter, copies_are_independent_of_the_table)
+{
+    Users_Table table;
+    users_table_init(&table);
+    users_table_add(&table, "bibi", 1);
+ 
+    Users_Table_Iter iter;
+    users_table_iter_begin(&table, &iter);
+    User user;
+    users_table_iter_next(&iter, &user);
+    users_table_iter_end(&iter);
+ 
+    user.socket_fd = 999;
+ 
+    User found;
+    users_table_find(&table, "bibi", &found);
+    cr_assert_eq(found.socket_fd, 1);
+ 
+    users_table_destroy(&table);
+}
+
+static void mark_all_busy(User* user, void* context)
+{
+    (void)context;
+    user->status = USER_STATUS_BUSY;
+}
+ 
+Test(users_table_for_each, mutates_the_real_entries)
+{
+    Users_Table table;
+    users_table_init(&table);
+    users_table_add(&table, "fidel", 1);
+    users_table_add(&table, "raul", 2);
+ 
+    users_table_for_each(&table, mark_all_busy, NULL);
+ 
+    User found;
+    users_table_find(&table, "fidel", &found);
+    cr_assert_eq(found.status, USER_STATUS_BUSY);
+    users_table_find(&table, "raul", &found);
+    cr_assert_eq(found.status, USER_STATUS_BUSY);
+ 
+    users_table_destroy(&table);
+}
+ 
+static void count_visitor(User* user, void* context)
+{
+    (void)user;
+    int* count = (int*)context;
+    (*count)++;
+}
+ 
+Test(users_table_for_each, context_pointer_is_passed_through)
+{
+    Users_Table table;
+    users_table_init(&table);
+    users_table_add(&table, "kim", 1);
+    users_table_add(&table, "jong", 2);
+    users_table_add(&table, "un", 3);
+ 
+    int count = 0;
+    users_table_for_each(&table, count_visitor, &count);
+ 
+    cr_assert_eq(count, 3);
+    users_table_destroy(&table);
+}
+ 
+Test(users_table_for_each, table_is_usable_again_afterwards)
+{
+    Users_Table table;
+    users_table_init(&table);
+    users_table_add(&table, "bibi", 1);
+ 
+    users_table_for_each(&table, mark_all_busy, NULL);
+ 
+    cr_assert(users_table_add(&table, "claudia", 2));
+ 
+    users_table_destroy(&table);
+}

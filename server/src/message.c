@@ -1,9 +1,9 @@
+#include "message.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <cJSON.h>
-
-#include "message.h"
 
 static char* get_string_field(const cJSON* json, const char* field_name)
 {
@@ -44,31 +44,31 @@ static Message_Type parse_message_type(const char* type_str)
 
 static char* message_type_to_string (const Message_Type type)
 {
-    if (type == MESSAGE_TYPE_IDENTIFY)         return "IDENTIFY";
-    if (type == MESSAGE_TYPE_STATUS)           return "STATUS";
-    if (type == MESSAGE_TYPE_USERS)            return "USERS";
-    if (type == MESSAGE_TYPE_TEXT)             return "TEXT";
-    if (type == MESSAGE_TYPE_PUBLIC_TEXT)      return "PUBLIC_TEXT";
-    if (type == MESSAGE_TYPE_NEW_ROOM)         return "NEW_ROOM";
-    if (type == MESSAGE_TYPE_INVITE)           return "INVITE";
-    if (type == MESSAGE_TYPE_JOIN_ROOM)        return "JOIN_ROOM";
-    if (type == MESSAGE_TYPE_ROOM_USERS)       return "ROOM_USERS";
-    if (type == MESSAGE_TYPE_ROOM_TEXT)        return "ROOM_TEXT";
-    if (type == MESSAGE_TYPE_LEAVE_ROOM)       return "LEAVE_ROOM";
-    if (type == MESSAGE_TYPE_DISCONNECT)       return "DISCONNECT";
-    if (type == MESSAGE_TYPE_NEW_STATUS)       return "NEW_STATUS";
-    if (type == MESSAGE_TYPE_USER_LIST)        return "USER_LIST";
-    if (type == MESSAGE_TYPE_TEXT_FROM)        return "TEXT_FROM";
-    if (type == MESSAGE_TYPE_PUBLIC_TEXT_FROM) return "PUBLIC_TEXT_FROM";
-    if (type == MESSAGE_TYPE_ROOM_TEXT_FROM)   return "ROOM_TEXT_FROM";
-    if (type == MESSAGE_TYPE_JOINED_ROOM)      return "JOINED_ROOM";
-    if (type == MESSAGE_TYPE_ROOM_USER_LIST)   return "ROOM_USER_LIST";
-    if (type == MESSAGE_TYPE_TEXT_FROM)        return "TEXT_FROM";
-    if (type == MESSAGE_TYPE_LEFT_ROOM)        return "LEFT_ROOM";
-    if (type == MESSAGE_TYPE_NEW_USER)         return "NEW_USER";
-    if (type == MESSAGE_TYPE_DISCONNECTED)     return "DISCONNECTED";
-    if (type == MESSAGE_TYPE_RESPONSE)         return "RESPONSE";
-    return "UNKNOWN";
+    if (type == MESSAGE_TYPE_IDENTIFY)         return strdup("IDENTIFY");
+    if (type == MESSAGE_TYPE_STATUS)           return strdup("STATUS");
+    if (type == MESSAGE_TYPE_USERS)            return strdup("USERS");
+    if (type == MESSAGE_TYPE_TEXT)             return strdup("TEXT");
+    if (type == MESSAGE_TYPE_PUBLIC_TEXT)      return strdup("PUBLIC_TEXT");
+    if (type == MESSAGE_TYPE_NEW_ROOM)         return strdup("NEW_ROOM");
+    if (type == MESSAGE_TYPE_INVITE)           return strdup("INVITE");
+    if (type == MESSAGE_TYPE_JOIN_ROOM)        return strdup("JOIN_ROOM");
+    if (type == MESSAGE_TYPE_ROOM_USERS)       return strdup("ROOM_USERS");
+    if (type == MESSAGE_TYPE_ROOM_TEXT)        return strdup("ROOM_TEXT");
+    if (type == MESSAGE_TYPE_LEAVE_ROOM)       return strdup("LEAVE_ROOM");
+    if (type == MESSAGE_TYPE_DISCONNECT)       return strdup("DISCONNECT");
+    if (type == MESSAGE_TYPE_NEW_STATUS)       return strdup("NEW_STATUS");
+    if (type == MESSAGE_TYPE_USER_LIST)        return strdup("USER_LIST");
+    if (type == MESSAGE_TYPE_TEXT_FROM)        return strdup("TEXT_FROM");
+    if (type == MESSAGE_TYPE_PUBLIC_TEXT_FROM) return strdup("PUBLIC_TEXT_FROM");
+    if (type == MESSAGE_TYPE_ROOM_TEXT_FROM)   return strdup("ROOM_TEXT_FROM");
+    if (type == MESSAGE_TYPE_JOINED_ROOM)      return strdup("JOINED_ROOM");
+    if (type == MESSAGE_TYPE_ROOM_USER_LIST)   return strdup("ROOM_USER_LIST");
+    if (type == MESSAGE_TYPE_TEXT_FROM)        return strdup("TEXT_FROM");
+    if (type == MESSAGE_TYPE_LEFT_ROOM)        return strdup("LEFT_ROOM");
+    if (type == MESSAGE_TYPE_NEW_USER)         return strdup("NEW_USER");
+    if (type == MESSAGE_TYPE_DISCONNECTED)     return strdup("DISCONNECTED");
+    if (type == MESSAGE_TYPE_RESPONSE)         return strdup("RESPONSE");
+    return strdup("UNKNOWN");
 }
 
 void message_init(Message* msg)

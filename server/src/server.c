@@ -133,6 +133,8 @@ int server_init(Server* server, int port, bool log_enabled)
     server->address.sin_port = htons((uint16_t)port);
     server->address.sin_addr.s_addr = INADDR_ANY;
 
+    users_table_init(&server->users);
+
     return 0;
 }
 
@@ -176,15 +178,45 @@ int server_accept_client(const Server* server)
 ssize_t server_send(
         const Server *server,
         int client_fd,
-        const char *message,
-        size_t length
-    ) 
+        Message* message
+    )
 {
-    ssize_t sent = send(client_fd, message, length, 0);
-    if (sent < 0) log_error("Error al enviar el mensaje");
-    else log_info(server->log_enabled, "Enviados %zd bytes al cliente.", sent);
+    char *response = malloc(SERVER_BUFFER_SIZE);
+    if (response == NULL)
+    {
+        // Manejar Error
+        free(response);
+        return -1;
+    }
+
+    if (message_to_json(message, response, SERVER_BUFFER_SIZE))
+    {
+        size_t response_length = strlen(response);
+        if (response_length + 1 < SERVER_BUFFER_SIZE)
+        {
+            response[response_length] = '\n';
+            response[response_length + 1] = '\0';
+            response_length++;
+        }
+        else
+        {
+            response[SERVER_BUFFER_SIZE - 2] = '\n';
+            response[SERVER_BUFFER_SIZE - 1] = '\0';
+            response_length = SERVER_BUFFER_SIZE - 1;
+        }
+        log_info(server->log_enabled, "Enviando a client_fd=%d el JSON: %s", client_fd, response);
+        ssize_t sent = send(client_fd, response, response_length, 0);
+        if (sent < 0) log_error("Error al enviar el mensaje");
+        else log_info(server->log_enabled, "Enviados %zd bytes al cliente.", sent);
+        free(response);
+        return sent;
+    }
+
+    // Manejar Error
+
+    free(response);
     
-    return sent;
+    return -1;
 }
 
 void server_close(Server* server) 

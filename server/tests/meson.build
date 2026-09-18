@@ -4,7 +4,7 @@ if criterion_dep.found()
     test_server_parse_args = executable (
         'test_server_parse_args',
         'test_server_parse_args.c',
-        dependencies: criterion_dep,
+        dependencies: [criterion_dep, glib_dep],
         link_with: server_lib
     )
     test('server_parse_args', test_server_parse_args)
@@ -40,6 +40,14 @@ if criterion_dep.found()
         link_with: server_lib
     )
     test('users_table', test_users_table)
+
+    test_users_table_concurrency = executable (
+        'test_users_table_concurrency',
+        'test_users_table_concurrency.c',
+        dependencies: [criterion_dep, glib_dep, threads_dep],
+        link_with: server_lib
+    )
+    test('users_table_concurrency', test_users_table_concurrency)
 else
     warning('Criterion no encontrado: los test no compilarán.\nPor favor instale: \'libcriterion-dev\'.')
 endif

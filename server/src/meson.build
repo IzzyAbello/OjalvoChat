@@ -10,6 +10,7 @@ server_lib = library (
     'user.c',
     'users_table.c',
     'message.c',
+    'message_handler.c',
     dependencies: [threads_dep, glib_dep, cjson_dep]
 )
 

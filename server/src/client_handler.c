@@ -1,11 +1,13 @@
 #include "client_handler.h"
-#include "message.h"
  
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include "message.h"
+#include "message_handler.h"
  
 #define RECV_CHUNK_SIZE 1024
 
@@ -16,18 +18,13 @@ void* handle_client(void* arg)
     Server* server = client_args->server;
     free(client_args);
  
-    const char* greeting = "Message from the server to the client 'Hello Client'\n";
-    server_send(server, client_fd, greeting, strlen(greeting));
- 
     Message_Buffer* buffer = malloc(sizeof(Message_Buffer));
     char *message = malloc(SERVER_BUFFER_SIZE);
-    char *response = malloc(SERVER_BUFFER_SIZE);
  
-    if (buffer == NULL || message == NULL || response == NULL)
+    if (buffer == NULL || message == NULL)
     {
         free(buffer);
         free(message);
-        free(response);
         close(client_fd);
         return NULL;
     }
@@ -53,51 +50,19 @@ void* handle_client(void* arg)
             // Parsear JSON ------ ARREGLAR 
             Message msg_in;
             message_init(&msg_in);
-
             if (!message_from_json(message, &msg_in))
             {
-                // Manejar error
+                // Manejar error => desconectar usuario?
             }
 
-            // Analizar msg_in
-
-            Message msg_out;
-            message_init(&msg_out);
-            
-            // SOLO POR AHORA (ECHO)
-            msg_out = msg_in;
-
-            if (message_to_json(&msg_out, response, SERVER_BUFFER_SIZE))
-            {
-                size_t response_length = strlen(response);
-                if (response_length + 1 < SERVER_BUFFER_SIZE)
-                {
-                    response[response_length] = '\n';
-                    response[response_length + 1] = '\0';
-                    response_length++;
-                }
-                else
-                {
-                    response[SERVER_BUFFER_SIZE - 2] = '\n';
-                    response[SERVER_BUFFER_SIZE - 1] = '\0';
-                    response_length = SERVER_BUFFER_SIZE - 1;
-                }
-                server_send(server, client_fd, response, response_length);
-            }
-            else
-            {
-                // Manejar error
-            }
+            message_handler_process(server, &msg_in, client_fd);
 
             message_destroy(&msg_in);
-            // QUITAR COMENTARIOS DESPUES 
-            //message_destroy(&msg_out);
         }
     }
  
     free(buffer);
     free(message);
-    free(response);
-    close(client_fd);
+    //close(client_fd);
     return NULL;
 }

@@ -23,4 +23,21 @@ bool users_table_find(const Users_Table* table, const char* username, User* out_
 
 bool users_table_remove(Users_Table* table, const char* username);
 
+typedef struct
+{
+    GHashTableIter iter;
+    Users_Table *table;
+}
+Users_Table_Iter;
+ 
+void users_table_iter_begin(Users_Table *table, Users_Table_Iter *iter);
+ 
+bool users_table_iter_next(Users_Table_Iter *iter, User *out_user);
+ 
+void users_table_iter_end(Users_Table_Iter *iter);
+ 
+typedef void (*User_Visitor)(User *user, void *context);
+ 
+void users_table_for_each(Users_Table *table, User_Visitor visitor, void *context);
+
 #endif /* USERS_TABLE_H */

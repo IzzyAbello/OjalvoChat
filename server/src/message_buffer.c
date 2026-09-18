@@ -1,6 +1,6 @@
-#include <string.h>
-
 #include "message_buffer.h"
+
+#include <string.h>
 
 void message_buffer_init(Message_Buffer *buffer)
 {
