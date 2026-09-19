@@ -34,7 +34,7 @@ static bool process_identify(
     char* username = strdup(msg_in->username);
 
     User user;
-    if(users_table_find(&server->users, username, &user))
+    if(users_table_find_by_username(&server->users, username, &user))
     {
         if (user.socket_fd != client_fd)
         {

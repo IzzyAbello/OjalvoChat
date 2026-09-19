@@ -131,14 +131,14 @@ static void* stress_client(void* arg)
         users_table_add(task->table, username, task->thread_index);
 
         User found;
-        users_table_find(task->table, username, &found);
+        users_table_find_by_username(task->table, username, &found);
 
         users_table_remove(task->table, username);
     }
     return NULL;
 }
 
-Test(users_table_concurrency, stress_add_find_remove_no_crash)
+Test(users_table_concurrency, stress_add_find_by_username_remove_no_crash)
 {
     Users_Table table;
     users_table_init(&table);

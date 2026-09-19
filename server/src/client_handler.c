@@ -47,12 +47,12 @@ void* handle_client(void* arg)
  
             if (message_length == 0) continue;
 
-            // Parsear JSON ------ ARREGLAR 
             Message msg_in;
             message_init(&msg_in);
             if (!message_from_json(message, &msg_in))
             {
                 // Manejar error => desconectar usuario?
+                return NULL;
             }
 
             message_handler_process(server, &msg_in, client_fd);
@@ -63,6 +63,5 @@ void* handle_client(void* arg)
  
     free(buffer);
     free(message);
-    //close(client_fd);
     return NULL;
 }

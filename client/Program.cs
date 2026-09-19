@@ -1,7 +1,6 @@
 ﻿using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using System.Diagnostics;
 
 const string ServerHost = "127.0.0.1";
 int serverPort = (args.Length > 0) ? int.Parse(args[0]) : 1234;
@@ -9,6 +8,8 @@ int clientCount = (args.Length > 1) ? int.Parse(args[1]) : 1;
 string? fixedMessage = (args.Length > 2) ? args[2] : null;
 
 Console.WriteLine($"Conectando {clientCount} cliente(s) a {ServerHost}:{serverPort}...");
+
+Console.CancelKeyPress += (_, _) => Console.WriteLine("\n¡Hasta luego!");
 
 async Task ConnectOnceAsync(int clientId)
 {
@@ -28,15 +29,11 @@ async Task ConnectOnceAsync(int clientId)
     {
         clientName = fixedMessage;
     }
-    else //if (clientCount == 1)
+    else
     {
-        Console.Write($"[CLIENT - {clientId}] Identificate con el servidor: ");
+        Console.Write($"[CLIENT - {clientId}] Identificate con el servidor:\n");
         clientName = Console.ReadLine() ?? $"client{clientId}";
     }
-    /*else
-    {
-        clientName = $"client{clientId}.";
-    }*/
 
     string outgoingJSON = JsonSerializer.Serialize(
         new {type = "IDENTIFY", username = clientName}
@@ -47,14 +44,13 @@ async Task ConnectOnceAsync(int clientId)
 
     if (serverResponse != null && serverResponse.Any(char.IsControl))
         Console.WriteLine($"[CLIENT - {clientId}] Mensaje inválido del servidor.");
-    Console.WriteLine($"[CLIENT - {clientId}] Respuesta del servidor: {serverResponse}");
-}
+    Console.WriteLine($"[CLIENT - {clientId}] <<< {serverResponse}\n");
 
-Stopwatch stopwatch = Stopwatch.StartNew();
+    string? incoming;
+    while((incoming = await reader.ReadLineAsync()) != null)
+        Console.WriteLine($"[CLIENT - {clientId}] <<< {incoming}");
+}
 
 Task[] tasks = new Task[clientCount];
 for (int i = 0; i < clientCount; i++) tasks[i] = ConnectOnceAsync(i);
 await Task.WhenAll(tasks);
-
-stopwatch.Stop();
-Console.WriteLine($"\nTiempo total: {stopwatch.Elapsed.TotalSeconds:F2}s para {clientCount} cliente(s).");
