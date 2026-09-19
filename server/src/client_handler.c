@@ -51,7 +51,19 @@ void* handle_client(void* arg)
             message_init(&msg_in);
             if (!message_from_json(message, &msg_in))
             {
-                // Manejar error => desconectar usuario?
+                User* user;
+                if (users_table_find_by_client_fd(&server->users, client_fd, user))
+                {
+                    Message disconnect_msg;
+                    message_init(&disconnect_msg);
+                    disconnect_msg.type = MESSAGE_TYPE_DISCONNECT;
+
+                    message_handler_process(server, &disconnect_msg, client_fd);
+                    message_destroy(&disconnect_msg);
+                }
+
+                server_disconnect_client(server, client_fd);
+                free(&user);
                 return NULL;
             }
 

@@ -167,12 +167,20 @@ int server_accept_client(const Server* server)
     int client_fd = accept(server->socket_fd, NULL, NULL);
     if (client_fd < 0) 
     {
-        if (errno == EINTR) return -2;
+        if (errno == EINTR) return -2; // MANEJAR ESTE ERROR EN ALGUN MOMENTO
         log_error("Error en accept...");
         return -1;
     }
     log_info(server->log_enabled, "¡Cliente conectado!");
     return client_fd;
+}
+
+void server_disconnect_client(Server* server, int client_fd)
+{
+    if (server == NULL || client_fd < 0) return;
+
+    log_info(server->log_enabled, "Desconectando a client_fd=%d...", client_fd);
+    close(client_fd);
 }
 
 ssize_t server_send(

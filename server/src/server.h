@@ -39,6 +39,8 @@ int server_bind_and_listen(Server *server, int backlog);
 
 int server_accept_client(const Server *server);
 
+void server_disconnect_client(Server* server, int client_fd);
+
 ssize_t server_send(
     const Server *server,
     int client_fd,
