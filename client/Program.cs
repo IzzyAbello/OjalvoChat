@@ -2,93 +2,168 @@
 using System.Text;
 using System.Text.Json;
 
-const string ServerHost = "127.0.0.1";
 int serverPort = (args.Length > 0) ? int.Parse(args[0]) : 1234;
-int clientCount = (args.Length > 1) ? int.Parse(args[1]) : 1;
+string ServerHost = (args.Length > 1) ? args[1] : "127.0.0.1";
 
-Console.WriteLine($"Conectando {clientCount} cliente(s) a {ServerHost}:{serverPort}...");
+Console.WriteLine($"Conectando a {ServerHost}:{serverPort}...");
 
-Console.CancelKeyPress += (_, _) => Console.WriteLine("\n¡Hasta luego!");
+using TcpClient client = new TcpClient();
+await client.ConnectAsync(ServerHost, serverPort);
+Console.WriteLine("Conectado.");
 
-SemaphoreSlim consoleLock = new SemaphoreSlim(1, 1);
+using NetworkStream stream = client.GetStream();
+using StreamReader reader = new StreamReader(stream, Encoding.UTF8);
+using StreamWriter writer = new StreamWriter(
+    stream,
+    new UTF8Encoding(false)
+) { AutoFlush = true };
 
-async Task ConnectOnceAsync(int clientId)
+object consoleLock = new object();
+using CancellationTokenSource cts = new CancellationTokenSource();
+
+Console.CancelKeyPress += (_, e) =>
 {
-    using TcpClient client = new TcpClient();
-    await client.ConnectAsync(ServerHost, serverPort);
-    Console.WriteLine($"[CLIENT - {clientId}] Conectado.");
+    e.Cancel = true;
+    lock (consoleLock) Console.WriteLine("\n¡Hasta luego!");
+    cts.Cancel();
+};
 
-    using NetworkStream stream = client.GetStream();
-    using StreamReader reader = new StreamReader(stream, Encoding.UTF8);
-    using StreamWriter writer = new StreamWriter(
-        stream,
-        new UTF8Encoding(false)
-    ) { AutoFlush = true };
-
-
-    bool disconnect = false;
-    while (!disconnect)
+Task receiveTask = Task.Run(async () =>
+{
+    try
     {
-        await consoleLock.WaitAsync();
-        try
+        string? line;
+        while ((line = await reader.ReadLineAsync(cts.Token)) != null)
         {
-            Console.WriteLine($"[CLIENT - {clientId}] Escribe el tipo de mensaje:");
-            string messageType = Console.ReadLine()?.Trim().ToLower() ?? "";
-
-            string outgoingJson;
-            switch (messageType)
+            lock (consoleLock)
             {
-                case "disconnect":
-                    Console.WriteLine($"[CLIENT - {clientId}] Desconectando...");
-                    outgoingJson = JsonSerializer.Serialize(
-                        new {type = "DISCONNECT"}
-                    );
-                    disconnect = true;
-                    break;
-                case "identify":
-                    Console.WriteLine($"[CLIENT - {clientId}] Escribe tu username:");
-                    string username = Console.ReadLine() ?? "";
-                    outgoingJson = JsonSerializer.Serialize(
-                        new { type = "IDENTIFY", username }
-                    );
-                    break;
-                case "status":
-                    Console.WriteLine($"[CLIENT - {clientId}] Escribe tu status:");
-                    string status = Console.ReadLine() ?? "";
-                    outgoingJson = JsonSerializer.Serialize(
-                        new { type = "STATUS", status }
-                    );
-                    break;
-                case "users":
-                    outgoingJson = JsonSerializer.Serialize(
-                        new { type = "USERS" }
-                    );
-                    break;
-                default:
-                    Console.WriteLine( $"[CLIENT - {clientId}] Tipo de mensaje inválido." );
-                    continue;
+                Console.WriteLine($"\n<<< {line}");
             }
-
-            Console.WriteLine($"[CLIENT - {clientId}] >>> {outgoingJson}");
-            await writer.WriteLineAsync(outgoingJson);
-
-
-            char[] buffer = new char[1024*1024];
-            int bytesRead = await reader.ReadAsync(buffer, 0, buffer.Length)
-                .WaitAsync(TimeSpan.FromMilliseconds(60000));
-            string serverResponse = new string(buffer, 0, bytesRead);
-
-            if (bytesRead <= 0)
-                Console.WriteLine($"[CLIENT - {clientId}] No llegan respuestas del server...");
-            else Console.WriteLine($"[CLIENT - {clientId}] <<< {serverResponse}");
         }
-        finally
+        lock (consoleLock)
         {
-            consoleLock.Release();
+            Console.WriteLine("\nEl servidor cerró la conexión.");
         }
+        cts.Cancel();
+    }
+    catch (OperationCanceledException) {}
+});
+
+try
+{
+    while (!cts.IsCancellationRequested)
+    {
+        Console.WriteLine("Escribe el tipo de mensaje:");
+        string messageType = Console.ReadLine()?.Trim().ToLower() ?? "";
+
+        string outgoingJson;
+        bool disconnect = false;
+
+        switch (messageType)
+        {
+            case "disconnect":
+                Console.WriteLine("Desconectando...");
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "DISCONNECT" }
+                );
+                disconnect = true;
+                break;
+            case "identify":
+                Console.WriteLine("Escribe tu username:");
+                string username = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "IDENTIFY", username }
+                );
+                break;
+            case "status":
+                Console.WriteLine("Escribe tu status:");
+                string status = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "STATUS", status }
+                );
+                break;
+            case "users":
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "USERS" }
+                );
+                break;
+            case "text":
+                Console.WriteLine("Escribe el destinatario:");
+                string usernameText = Console.ReadLine() ?? "";
+                Console.WriteLine("Escribe el texto:");
+                string text = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "TEXT", username = usernameText, text }
+                );
+                break;
+            case "public":
+                Console.WriteLine("Escribe el texto público:");
+                string publicText = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "PUBLIC_TEXT", text = publicText }
+                );
+                break;
+            case "new":
+                Console.WriteLine("Escribe el nombre del cuarto:");
+                string roomname = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "NEW_ROOM", roomname }
+                );
+                break;
+            case "join":
+                Console.WriteLine("Escribe el nombre del cuarto:");
+                string roomName = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "JOIN_ROOM", roomname = roomName }
+                );
+                break;
+            case "room users":
+                Console.WriteLine("Escribe el nombre del cuarto:");
+                string room = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "ROOM_USERS", roomname = room }
+                );
+                break;
+            case "room text":
+                Console.WriteLine("Escribe el nombre del cuarto:");
+                string roomNm = Console.ReadLine() ?? "";
+                Console.WriteLine("Escribe el texto:");
+                string roomTxt = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "ROOM_TEXT", roomname = roomNm, text = roomTxt }
+                );
+                break;
+            case "leave room":
+                Console.WriteLine("Escribe el nombre del cuarto:");
+                string roomN = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "LEAVE_ROOM", roomname = roomN }
+                );
+                break;
+            /*case "invite":
+                Console.WriteLine("Escribe el nombre del cuarto:");
+                string roomname = Console.ReadLine() ?? "";
+                outgoingJson = JsonSerializer.Serialize(
+                    new { type = "NEW_ROOM", roomname }
+                );
+                break;*/
+            default:
+                Console.WriteLine("Tipo de mensaje inválido.");
+                continue;
+        }
+
+        lock (consoleLock)
+        {
+            Console.WriteLine($">>> {outgoingJson}");
+        }
+        await writer.WriteLineAsync(outgoingJson);
+
+        if (disconnect) break;
     }
 }
+finally
+{
+    cts.Cancel();
+}
 
-Task[] tasks = new Task[clientCount];
-for (int i = 0; i < clientCount; i++) tasks[i] = ConnectOnceAsync(i);
-await Task.WhenAll(tasks);
+await receiveTask;

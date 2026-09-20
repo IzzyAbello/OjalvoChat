@@ -190,6 +190,95 @@ static bool process_users(Server* server, int client_fd)
     return true;
 }
 
+static bool process_text(
+    Server* server,
+    const Message* msg_in,
+    int client_fd
+)
+{
+    User user_to;
+    if (users_table_find_by_username(&server->users, msg_in->username, &user_to))
+    {
+        Message text_from;
+        message_init(&text_from);
+        text_from.type = MESSAGE_TYPE_TEXT_FROM;
+
+        User user_from;
+        if (!users_table_find_by_client_fd(&server->users, client_fd, &user_from))
+        {
+            message_destroy(&text_from);
+            return false;
+        }
+
+        text_from.username = strdup(user_from.username);
+        text_from.text = strdup(msg_in->text);
+
+        if (text_from.username == NULL || text_from.text == NULL)
+        {
+            message_destroy(&text_from);
+            return false;
+        }
+
+        server_send(server, user_to.socket_fd, &text_from);
+
+        message_destroy(&text_from);
+    }
+    else
+    {
+        Message response;
+        message_init(&response);
+
+        response.type = MESSAGE_TYPE_RESPONSE;
+        response.operation = strdup("TEXT");
+        response.result = strdup("NO_SUCH_USER");
+        response.extra = strdup(msg_in->username);
+
+        if (response.operation == NULL || response.result == NULL || response.extra == NULL)
+        {
+            message_destroy(&response);
+            return false;
+        }
+
+        server_send(server, client_fd, &response);
+
+        message_destroy(&response);
+    }
+    return true;
+}
+
+static bool process_public_text(
+    Server* server,
+    const Message* msg_in,
+    int client_fd
+)
+{
+    Message public_text_from;
+    message_init(&public_text_from);
+    public_text_from.type = MESSAGE_TYPE_PUBLIC_TEXT_FROM;
+
+    User user_from;
+    if (!users_table_find_by_client_fd(&server->users, client_fd, &user_from))
+    {
+        message_destroy(&public_text_from);
+        return false;
+    }
+
+    public_text_from.username = strdup(user_from.username);
+    public_text_from.text = strdup(msg_in->text);
+
+    if (public_text_from.username == NULL || public_text_from.text == NULL)
+    {
+        message_destroy(&public_text_from);
+        return false;
+    }
+
+    notify_all_but_self(server, public_text_from, client_fd);
+
+    message_destroy(&public_text_from);
+    
+    return true;
+}
+
 bool message_handler_process(
     Server* server,
     const Message* msg_in,
@@ -217,6 +306,10 @@ bool message_handler_process(
             return process_status(server, msg_in, client_fd);
         case MESSAGE_TYPE_USERS:
             return process_users(server, client_fd);
+        case MESSAGE_TYPE_TEXT:
+            return process_text(server, msg_in, client_fd);
+        case MESSAGE_TYPE_PUBLIC_TEXT:
+            return process_public_text(server, msg_in, client_fd);
         default:
             break;
     }
