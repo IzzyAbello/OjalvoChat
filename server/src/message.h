@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <cjson/cJSON.h>
 
 typedef enum
 {
@@ -41,11 +42,9 @@ typedef struct
     char* result;
     char* extra;
     char* status;
-    char* users;
+    cJSON* users;
     char* text;
     char* roomname;
-    char** usernames;
-    size_t usernames_count;
 }
 Message;
 

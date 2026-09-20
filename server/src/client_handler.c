@@ -51,7 +51,7 @@ void* handle_client(void* arg)
             message_init(&msg_in);
             if (!message_from_json(message, &msg_in))
             {
-                User* user;
+                User* user = NULL;
                 if (users_table_find_by_client_fd(&server->users, client_fd, user))
                 {
                     Message disconnect_msg;
@@ -63,7 +63,6 @@ void* handle_client(void* arg)
                 }
 
                 server_disconnect_client(server, client_fd);
-                free(&user);
                 return NULL;
             }
 

@@ -122,7 +122,6 @@ static bool process_identify(
         // error al agregar.
         return false;
     }
-    free(&user);
 }
 
 static bool process_status(
@@ -163,6 +162,34 @@ static bool process_status(
     else return process_disconnect(server, client_fd);
 }
 
+static bool process_users(Server* server, int client_fd)
+{
+    Message user_list;
+    message_init(&user_list);
+    user_list.type = MESSAGE_TYPE_USER_LIST;
+
+    cJSON* users = cJSON_CreateObject();
+
+    Users_Table_Iter it;
+    users_table_iter_begin(&server->users, &it);
+    User user;
+    while (users_table_iter_next(&it, &user))
+        cJSON_AddStringToObject(
+            users,
+            user.username,
+            user_status_to_string(user.status)
+        );
+    users_table_iter_end(&it);
+
+    user_list.users = users;
+
+    server_send(server, client_fd, &user_list);
+
+    message_destroy(&user_list);
+
+    return true;
+}
+
 bool message_handler_process(
     Server* server,
     const Message* msg_in,
@@ -188,6 +215,8 @@ bool message_handler_process(
     {
         case MESSAGE_TYPE_STATUS:
             return process_status(server, msg_in, client_fd);
+        case MESSAGE_TYPE_USERS:
+            return process_users(server, client_fd);
         default:
             break;
     }

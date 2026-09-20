@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -60,6 +59,11 @@ async Task ConnectOnceAsync(int clientId)
                         new { type = "STATUS", status }
                     );
                     break;
+                case "users":
+                    outgoingJson = JsonSerializer.Serialize(
+                        new { type = "USERS" }
+                    );
+                    break;
                 default:
                     Console.WriteLine( $"[CLIENT - {clientId}] Tipo de mensaje inválido." );
                     continue;
@@ -71,7 +75,7 @@ async Task ConnectOnceAsync(int clientId)
 
             char[] buffer = new char[1024*1024];
             int bytesRead = await reader.ReadAsync(buffer, 0, buffer.Length)
-                .WaitAsync(TimeSpan.FromMilliseconds(3000));
+                .WaitAsync(TimeSpan.FromMilliseconds(60000));
             string serverResponse = new string(buffer, 0, bytesRead);
 
             if (bytesRead <= 0)
