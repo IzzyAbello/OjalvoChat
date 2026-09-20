@@ -20,9 +20,17 @@ void users_table_destroy(Users_Table* table);
 
 bool users_table_add(Users_Table* table, const char* username, int socket_fd);
 
+bool users_table_contains_by_username(Users_Table* table, const char* username);
+
+bool users_table_contains_by_client_fd(Users_Table* table, const int client_fd);
+
 bool users_table_find_by_username(const Users_Table* table, const char* username, User* out_user);
 
 bool users_table_find_by_client_fd(const Users_Table* table, const int client_fd, User* out_user);
+
+bool users_table_change_status_by_username(const Users_Table* table, const char* username, User_Status status);
+
+bool users_table_change_status_by_client_fd(const Users_Table* table, const int client_fd, User_Status status);
 
 bool users_table_remove(Users_Table* table, const char* username);
 

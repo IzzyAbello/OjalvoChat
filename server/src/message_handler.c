@@ -1,7 +1,5 @@
 #include "message_handler.h"
 
-static Message disconnect_msg;
-
 typedef struct 
 {
     Server* server;
@@ -66,7 +64,16 @@ static bool process_identify(
 
     char* username = strdup(msg_in->username);
 
+
     User user;
+    if (users_table_find_by_client_fd(&server->users, client_fd, &user))
+    {
+        if (strcmp(user.username, username) != 0)
+            return process_disconnect(server, client_fd);
+        //ignorar
+        return true;
+    }
+    
     if(users_table_find_by_username(&server->users, username, &user))
     {
         if (user.socket_fd != client_fd)
@@ -118,6 +125,44 @@ static bool process_identify(
     free(&user);
 }
 
+static bool process_status(
+    Server* server,
+    const Message* msg_in,
+    int client_fd
+)
+{
+    if (msg_in->status == NULL)
+    {
+        // manejar error
+        return false;
+    }
+
+    User_Status msg_status;
+    if(user_status_from_string(strdup(msg_in->status), &msg_status))
+    {
+        User user;
+        if (users_table_find_by_client_fd(&server->users, client_fd, &user))
+        {
+            if (user.status != msg_status)
+            {
+                users_table_change_status_by_client_fd(&server->users, client_fd, msg_status);
+                
+                Message notify_users;
+                message_init(&notify_users);
+                notify_users.type = MESSAGE_TYPE_NEW_STATUS;
+                notify_users.username = strdup(user.username);
+                notify_users.status = strdup(msg_in->status);
+
+                notify_all_but_self(server, notify_users, client_fd);
+
+                message_destroy(&notify_users);
+            }
+        }
+        return true;
+    }
+    else return process_disconnect(server, client_fd);
+}
+
 bool message_handler_process(
     Server* server,
     const Message* msg_in,
@@ -136,9 +181,16 @@ bool message_handler_process(
     if (msg_in->type == MESSAGE_TYPE_IDENTIFY)
         return process_identify(server, msg_in, client_fd);
 
-    message_init(&disconnect_msg);
-    disconnect_msg.type = MESSAGE_TYPE_DISCONNECT;
-    // A partir de estos, si no se identifican toca desconectarlos...
+    if (!users_table_contains_by_client_fd(&server->users, client_fd))
+        return process_disconnect(server, client_fd);
+
+    switch (msg_in->type)
+    {
+        case MESSAGE_TYPE_STATUS:
+            return process_status(server, msg_in, client_fd);
+        default:
+            break;
+    }
 
     return true;
 }

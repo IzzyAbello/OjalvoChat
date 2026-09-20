@@ -171,7 +171,11 @@ int server_accept_client(const Server* server)
         log_error("Error en accept...");
         return -1;
     }
-    log_info(server->log_enabled, "¡Cliente conectado!");
+    log_info(
+        server->log_enabled,
+        "Cliente conectado en client_fd=%d",
+        client_fd
+    );
     return client_fd;
 }
 

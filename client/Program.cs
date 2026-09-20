@@ -1,15 +1,17 @@
-﻿using System.Net.Sockets;
+﻿using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
 const string ServerHost = "127.0.0.1";
 int serverPort = (args.Length > 0) ? int.Parse(args[0]) : 1234;
 int clientCount = (args.Length > 1) ? int.Parse(args[1]) : 1;
-string? fixedMessage = (args.Length > 2) ? args[2] : null;
 
 Console.WriteLine($"Conectando {clientCount} cliente(s) a {ServerHost}:{serverPort}...");
 
 Console.CancelKeyPress += (_, _) => Console.WriteLine("\n¡Hasta luego!");
+
+SemaphoreSlim consoleLock = new SemaphoreSlim(1, 1);
 
 async Task ConnectOnceAsync(int clientId)
 {
@@ -23,32 +25,64 @@ async Task ConnectOnceAsync(int clientId)
         stream,
         new UTF8Encoding(false)
     ) { AutoFlush = true };
-    
-    string clientName;
-    if (fixedMessage != null)
+
+
+    bool disconnect = false;
+    while (!disconnect)
     {
-        clientName = fixedMessage;
+        await consoleLock.WaitAsync();
+        try
+        {
+            Console.WriteLine($"[CLIENT - {clientId}] Escribe el tipo de mensaje:");
+            string messageType = Console.ReadLine()?.Trim().ToLower() ?? "";
+
+            string outgoingJson;
+            switch (messageType)
+            {
+                case "disconnect":
+                    Console.WriteLine($"[CLIENT - {clientId}] Desconectando...");
+                    outgoingJson = JsonSerializer.Serialize(
+                        new {type = "DISCONNECT"}
+                    );
+                    disconnect = true;
+                    break;
+                case "identify":
+                    Console.WriteLine($"[CLIENT - {clientId}] Escribe tu username:");
+                    string username = Console.ReadLine() ?? "";
+                    outgoingJson = JsonSerializer.Serialize(
+                        new { type = "IDENTIFY", username }
+                    );
+                    break;
+                case "status":
+                    Console.WriteLine($"[CLIENT - {clientId}] Escribe tu status:");
+                    string status = Console.ReadLine() ?? "";
+                    outgoingJson = JsonSerializer.Serialize(
+                        new { type = "STATUS", status }
+                    );
+                    break;
+                default:
+                    Console.WriteLine( $"[CLIENT - {clientId}] Tipo de mensaje inválido." );
+                    continue;
+            }
+
+            Console.WriteLine($"[CLIENT - {clientId}] >>> {outgoingJson}");
+            await writer.WriteLineAsync(outgoingJson);
+
+
+            char[] buffer = new char[1024*1024];
+            int bytesRead = await reader.ReadAsync(buffer, 0, buffer.Length)
+                .WaitAsync(TimeSpan.FromMilliseconds(3000));
+            string serverResponse = new string(buffer, 0, bytesRead);
+
+            if (bytesRead <= 0)
+                Console.WriteLine($"[CLIENT - {clientId}] No llegan respuestas del server...");
+            else Console.WriteLine($"[CLIENT - {clientId}] <<< {serverResponse}");
+        }
+        finally
+        {
+            consoleLock.Release();
+        }
     }
-    else
-    {
-        Console.Write($"[CLIENT - {clientId}] Identificate con el servidor:\n");
-        clientName = Console.ReadLine() ?? $"client{clientId}";
-    }
-
-    string outgoingJSON = JsonSerializer.Serialize(
-        new {type = "IDENTIFY", username = clientName}
-    );
-    await writer.WriteLineAsync(outgoingJSON);
-    
-    string? serverResponse = await reader.ReadLineAsync();
-
-    if (serverResponse != null && serverResponse.Any(char.IsControl))
-        Console.WriteLine($"[CLIENT - {clientId}] Mensaje inválido del servidor.");
-    Console.WriteLine($"[CLIENT - {clientId}] <<< {serverResponse}\n");
-
-    string? incoming;
-    while((incoming = await reader.ReadLineAsync()) != null)
-        Console.WriteLine($"[CLIENT - {clientId}] <<< {incoming}");
 }
 
 Task[] tasks = new Task[clientCount];

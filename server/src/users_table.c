@@ -44,6 +44,30 @@ bool users_table_add(Users_Table* table, const char* username, int socket_fd)
     return true;
 }
 
+
+bool users_table_contains_by_username(Users_Table* table, const char* username)
+{
+    GMutex* mutex = (GMutex*)&table->mutex;
+
+    g_mutex_lock(mutex);
+    bool exists = (g_hash_table_lookup(table->table, username) != NULL);
+    g_mutex_unlock(mutex);
+
+    return exists;
+}
+
+bool users_table_contains_by_client_fd(Users_Table* table, const int client_fd)
+{
+    GMutex* mutex = (GMutex*)&table->mutex;
+
+    g_mutex_lock(mutex);
+    bool exists = (g_hash_table_lookup(table->table_by_fd, GINT_TO_POINTER(client_fd)) != NULL);
+    g_mutex_unlock(mutex);
+
+    return exists;
+}
+
+
 bool users_table_find_by_username(const Users_Table* table, const char* username, User* out_user)
 {
     GMutex* mutex = (GMutex*)&table->mutex;
@@ -69,6 +93,44 @@ bool users_table_find_by_client_fd(const Users_Table* table, const int client_fd
     bool exists = (found != NULL);
  
     if (exists) *out_user = *found;
+ 
+    g_mutex_unlock(mutex);
+    return exists;
+}
+
+bool users_table_change_status_by_username(
+    const Users_Table* table,
+    const char* username,
+    User_Status status
+)
+{
+    GMutex* mutex = (GMutex*)&table->mutex;
+
+    g_mutex_lock(mutex);
+
+    User* found = g_hash_table_lookup(table->table, username);
+    bool exists = (found != NULL);
+    
+    if (exists) found->status = status;
+
+    g_mutex_unlock(mutex);
+    return exists;
+}
+
+bool users_table_change_status_by_client_fd(
+    const Users_Table* table,
+    const int client_fd,
+    User_Status status
+)
+{
+    GMutex* mutex = (GMutex*)&table->mutex;
+
+    g_mutex_lock(mutex);
+ 
+    User* found = g_hash_table_lookup(table->table_by_fd, GINT_TO_POINTER(client_fd));
+    bool exists = (found != NULL);
+
+    if (exists) found->status = status;
  
     g_mutex_unlock(mutex);
     return exists;
