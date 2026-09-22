@@ -140,13 +140,25 @@ try
                     new { type = "LEAVE_ROOM", roomname = roomN }
                 );
                 break;
-            /*case "invite":
+            case "invite":
                 Console.WriteLine("Escribe el nombre del cuarto:");
-                string roomname = Console.ReadLine() ?? "";
+                string roomNam = Console.ReadLine() ?? "";
+                Console.WriteLine("Escribe los nombres de los invitados separados por comas:");
+                string usernamesRaw = Console.ReadLine() ?? "";
+                string[] usernamesArray = usernamesRaw
+                    .Split(',')
+                    .Select(u => u.Trim())
+                    .ToArray();
+                
                 outgoingJson = JsonSerializer.Serialize(
-                    new { type = "NEW_ROOM", roomname }
+                    new 
+                    {
+                        type = "INVITE",
+                        roomname = roomNam,
+                        usernames = usernamesArray
+                    }
                 );
-                break;*/
+                break;
             default:
                 Console.WriteLine("Tipo de mensaje inválido.");
                 continue;

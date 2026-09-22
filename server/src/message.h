@@ -45,6 +45,8 @@ typedef struct
     cJSON* users;
     char* text;
     char* roomname;
+    char** usernames;
+    size_t usernames_count;
 }
 Message;
 

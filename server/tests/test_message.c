@@ -57,6 +57,26 @@ Test(message_to_json, invite_with_usernames_array)
     msg.type = MESSAGE_TYPE_INVITE;
     msg.roomname = "Sala 1";
 
+    char *usernames[] = {"miguel", "diaz", "canel"};
+    msg.usernames = usernames;
+    msg.usernames_count = 3;
+
+    char out[256];
+    bool ok = message_to_json(&msg, out, sizeof(out));
+
+    cr_assert(ok);
+    cr_assert_str_eq(out, "{\"type\":\"INVITE\",\"roomname\":\"Sala 1\",\"usernames\":[\"miguel\",\"diaz\",\"canel\"]}");
+
+
+}
+
+Test(message_to_json, users_object)
+{
+    Message msg;
+    message_init(&msg);
+    msg.type = MESSAGE_TYPE_INVITE;
+    msg.roomname = "Sala 1";
+
     cJSON* users = cJSON_CreateObject();
     cJSON_AddStringToObject(users, "Luis", "ACTIVE");
     cJSON_AddStringToObject(users, "Antonio", "AWAY");
@@ -163,6 +183,8 @@ Test(message_init, all_fields_start_empty)
     cr_assert_null(msg.users);
     cr_assert_null(msg.text);
     cr_assert_null(msg.roomname);
+    cr_assert_null(msg.usernames);
+    cr_assert_eq(msg.usernames_count, 0);
 }
 
 Test(message_init, null_msg_does_not_crash)
@@ -196,6 +218,21 @@ Test(message_destroy, null_msg_does_not_crash)
 }
 
 Test(message_destroy, frees_usernames_array_without_crashing)
+{
+    Message msg;
+    message_init(&msg);
+    cr_assert(message_from_json(
+        "{\"type\":\"INVITE\",\"roomname\":\"Sala 1\",\"usernames\":[\"Luis\",\"Antonio\"]}",
+        &msg));
+    cr_assert_eq(msg.usernames_count, 2);
+
+    message_destroy(&msg);
+
+    cr_assert_null(msg.usernames);
+    cr_assert_eq(msg.usernames_count, 0);
+}
+
+Test(message_destroy, frees_users_object_without_crashing)
 {
     Message msg;
     message_init(&msg);
@@ -280,6 +317,25 @@ Test(message_from_json, parses_usernames_array)
     message_init(&msg);
 
     bool ok = message_from_json(
+        "{\"type\":\"INVITE\",\"roomname\":\"Sala 1\",\"usernames\":[\"miguel\",\"diaz\",\"canel\"]}",
+        &msg
+    );
+
+    cr_assert(ok);
+    cr_assert_eq(msg.usernames_count, 3);
+    cr_assert_str_eq(msg.usernames[0], "miguel");
+    cr_assert_str_eq(msg.usernames[1], "diaz");
+    cr_assert_str_eq(msg.usernames[2], "canel");
+
+    message_destroy(&msg);
+}
+
+Test(message_from_json, parses_users_object)
+{
+    Message msg;
+    message_init(&msg);
+
+    bool ok = message_from_json(
         "{\"type\":\"INVITE\",\"roomname\":\"Sala 1\",\"users\":{\"Luis\":\"AWAY\",\"Antonio\":\"BUSY\",\"Fernando\":\"ACTIVE\"}}",
         &msg
     );
@@ -308,11 +364,26 @@ Test(message_from_json, missing_usernames_key_leaves_array_null)
 
     cr_assert(ok);
     cr_assert_null(msg.users);
+    cr_assert_null(msg.usernames);
+    cr_assert_eq(msg.usernames_count, 0);
 
     message_destroy(&msg);
 }
 
 Test(message_from_json, empty_usernames_array_leaves_count_zero)
+{
+    Message msg;
+    message_init(&msg);
+
+    bool ok = message_from_json("{\"type\":\"INVITE\",\"roomname\":\"Sala 1\",\"usernames\":[]}", &msg);
+
+    cr_assert(ok);
+    cr_assert_eq(msg.usernames_count, 0);
+
+    message_destroy(&msg);
+}
+
+Test(message_from_json, empty_users_object_leaves_count_zero)
 {
     Message msg;
     message_init(&msg);
