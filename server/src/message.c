@@ -6,7 +6,7 @@
 
 static char* get_string_field(const cJSON* json, const char* field_name)
 {
-    cJSON *item = cJSON_GetObjectItemCaseSensitive(json, field_name);
+    cJSON* item = cJSON_GetObjectItemCaseSensitive(json, field_name);
     if (cJSON_IsString(item) && (item->valuestring != NULL))
         return strdup(item->valuestring);
     return NULL;
@@ -86,7 +86,7 @@ void message_init(Message* msg)
     msg->usernames_count = 0;
 }
 
-void message_destroy(Message *msg)
+void message_destroy(Message* msg)
 {
     if (msg == NULL) return;
 
@@ -119,7 +119,7 @@ bool message_from_json(const char* json_raw, Message* out_msg)
     cJSON* json = cJSON_Parse(json_raw);
     if (json == NULL) return false;
 
-    cJSON *type_item = cJSON_GetObjectItemCaseSensitive(json, "type");
+    cJSON* type_item = cJSON_GetObjectItemCaseSensitive(json, "type");
     if (cJSON_IsString(type_item) && (type_item->valuestring != NULL))
         out_msg->type = parse_message_type(type_item->valuestring);
 
@@ -138,13 +138,13 @@ bool message_from_json(const char* json_raw, Message* out_msg)
         int count = cJSON_GetArraySize(usernames_array);
         if (count > 0)
         {
-            out_msg->usernames = malloc(sizeof(char *) * (size_t)count);
+            out_msg->usernames = malloc(sizeof(char*)* (size_t)count);
             if (out_msg->usernames != NULL)
             {
                 out_msg->usernames_count = 0;
                 for (int i = 0; i < count; i++)
                 {
-                    cJSON *elem = cJSON_GetArrayItem(usernames_array, i);
+                    cJSON* elem = cJSON_GetArrayItem(usernames_array, i);
                     if (cJSON_IsString(elem) && (elem->valuestring != NULL))
                     {
                         out_msg->usernames[out_msg->usernames_count] = strdup(elem->valuestring);
@@ -163,7 +163,7 @@ bool message_to_json(const Message* msg, char* out_json, size_t out_json_size)
 {
     if (msg == NULL || out_json == NULL) return false;
  
-    cJSON *json = cJSON_CreateObject();
+    cJSON* json = cJSON_CreateObject();
     if (json == NULL) return false;
  
     cJSON_AddStringToObject(json, "type", message_type_to_string(msg->type));
@@ -179,13 +179,13 @@ bool message_to_json(const Message* msg, char* out_json, size_t out_json_size)
  
     if (msg->usernames != NULL && msg->usernames_count > 0)
     {
-        cJSON *usernames_array = cJSON_AddArrayToObject(json, "usernames");
+        cJSON* usernames_array = cJSON_AddArrayToObject(json, "usernames");
         for (size_t i = 0; i < msg->usernames_count; i++)
             if (msg->usernames[i] != NULL)
                 cJSON_AddItemToArray(usernames_array, cJSON_CreateString(msg->usernames[i]));
     }
 
-    char *printed = cJSON_PrintUnformatted(json);
+    char* printed = cJSON_PrintUnformatted(json);
     cJSON_Delete(json);
     if (printed == NULL) return false;
  

@@ -5,6 +5,8 @@ typedef struct
     Server* server;
     Message* message;
     int client_fd;
+    int* client_fds_to_disconnect;
+    int index;
 }
 Send_Context;
 
@@ -12,21 +14,59 @@ static void send_if_is_not_self (User* user, void* context)
 {
     Send_Context* ctx = context;
     if(user->socket_fd != ctx->client_fd)
-        server_send(
-            ctx->server,
-            user->socket_fd,
-            ctx->message
-        );
+    {
+        if (
+            server_send(
+                ctx->server,
+                user->socket_fd,
+                ctx->message
+            ) < 0)
+        {
+            ctx->client_fds_to_disconnect[ctx->index] = user->socket_fd;
+            ctx->index++;
+        } 
+    }
 }
 
-static void notify_all_but_self (Server* server, Message message, int client_fd)
+static void notify_all_but_self (
+    Server* server, 
+    Message message, 
+    int client_fd
+)
 {
+    int mx_users = g_hash_table_size(server->users.table);
+    int fds_to_disconnect[mx_users+1]; // +1 de guardia.
+    for (int i = 0; i <= mx_users; i++)
+        fds_to_disconnect[i] = -1;
+
     Send_Context ctx = {
     .server = server,
     .message = &message,
-    .client_fd = client_fd
+    .client_fd = client_fd,
+    .client_fds_to_disconnect = fds_to_disconnect,
+    .index = 0
     };
+
     users_table_for_each(&server->users, send_if_is_not_self, &ctx);
+
+    int i = 0;
+    while (fds_to_disconnect[i] != -1)
+    {
+        User user;
+        if (users_table_find_by_client_fd(&server->users, fds_to_disconnect[i], &user))
+        {
+            // ELIMINAR DE LA SALA <---
+            /* 
+                Tengo que implementar dentro de la clase room_table
+                un metodo de eliminar de todas las salas. Que haga 
+                un lock y a un forach mientras busca.
+            */
+
+            // ELIMINAR DE LA LISTA GENERAL
+            users_table_remove(&server->users, user.username);
+        }
+        i++;
+    }
 }
 
 static bool process_disconnect(Server* server, int client_fd)
@@ -45,7 +85,7 @@ static bool process_disconnect(Server* server, int client_fd)
 
         message_destroy(&notify_users);
     }
-    //NO HACER FREE USER
+
     server_disconnect_client(server, client_fd);
     return true;
 }
@@ -84,7 +124,7 @@ static bool process_identify(
             response.operation = strdup("IDENTIFY");
             response.result = strdup("USER_ALREADY_EXISTS");
             response.extra = strdup(username);
-            
+
             server_send(server, client_fd, &response);
             message_destroy(&response);
             
@@ -104,9 +144,11 @@ static bool process_identify(
             response.result = strdup("SUCCESS");
             response.extra = strdup(username);
             
-            server_send(server, client_fd, &response);
+            int sent = server_send(server, client_fd, &response);
             
             message_destroy(&response);
+
+            if (sent < 0) return process_disconnect(server, client_fd);
 
             Message notify_users;
             message_init(&notify_users);
@@ -183,9 +225,11 @@ static bool process_users(Server* server, int client_fd)
 
     user_list.users = users;
 
-    server_send(server, client_fd, &user_list);
+    int sent = server_send(server, client_fd, &user_list);
 
     message_destroy(&user_list);
+
+    if (sent < 0) return process_disconnect(server, client_fd);
 
     return true;
 }
@@ -219,9 +263,11 @@ static bool process_text(
             return false;
         }
 
-        server_send(server, user_to.socket_fd, &text_from);
+        int sent = server_send(server, user_to.socket_fd, &text_from);
 
         message_destroy(&text_from);
+    
+        if (sent < 0) return process_disconnect(server, client_fd);
     }
     else
     {
@@ -239,9 +285,11 @@ static bool process_text(
             return false;
         }
 
-        server_send(server, client_fd, &response);
+        int sent = server_send(server, client_fd, &response);
 
         message_destroy(&response);
+    
+        if (sent < 0) return process_disconnect(server, client_fd);
     }
     return true;
 }

@@ -48,7 +48,7 @@ Server_Options server_parse_args(int argc, char const* argv[])
 
     for (int i = 0; i < argc; i++) 
     {
-        char const *arg = argv[i];
+        char const* arg = argv[i];
 
         if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
         {
@@ -76,7 +76,7 @@ int server_resolve_port(const Server_Options* options)
     if (options->port_arg == NULL)
         return SERVER_DEFAULT_PORT;
 
-    char *endptr;
+    char* endptr;
     errno = 0;
     long parsed = strtol(options->port_arg, &endptr, 10);
 
@@ -134,6 +134,7 @@ int server_init(Server* server, int port, bool log_enabled)
     server->address.sin_addr.s_addr = INADDR_ANY;
 
     users_table_init(&server->users);
+    room_table_init(&server->rooms);
 
     return 0;
 }
@@ -142,7 +143,7 @@ int server_bind_and_listen(Server* server, int backlog)
 {
     log_info(server->log_enabled, "Vinculando socket al puerto %d...", server->port);
     if (bind(server->socket_fd,
-            (struct sockaddr *)&server->address,
+            (struct sockaddr*)&server->address,
             sizeof(server->address)) < 0) 
     {
         log_error("Error en bind");
@@ -188,12 +189,12 @@ void server_disconnect_client(Server* server, int client_fd)
 }
 
 ssize_t server_send(
-        const Server *server,
+        const Server* server,
         int client_fd,
         Message* message
     )
 {
-    char *response = malloc(SERVER_BUFFER_SIZE);
+    char* response = malloc(SERVER_BUFFER_SIZE);
     if (response == NULL)
     {
         // Manejar Error

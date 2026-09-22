@@ -23,7 +23,7 @@ static int count_users(Users_Table* table)
 
 typedef struct
 {
-    Users_Table *table;
+    Users_Table* table;
     int index;
     bool result;
 }
@@ -122,7 +122,7 @@ Stress_Task;
 
 static void* stress_client(void* arg)
 {
-    Stress_Task *task = (Stress_Task*)arg;
+    Stress_Task* task = (Stress_Task*)arg;
     char username[USER_USERNAME_MAX_LENGTH + 1];
     snprintf(username, sizeof(username), "s%d", task->thread_index);
 

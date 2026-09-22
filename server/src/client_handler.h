@@ -5,11 +5,11 @@
 
 typedef struct
 {
-    Server *server;
+    Server* server;
     int client_fd;
 }
 Client_Args;
  
-void *handle_client(void *arg);
+void* handle_client(void* arg);
  
 #endif /* CLIENT_HANDLER_H */

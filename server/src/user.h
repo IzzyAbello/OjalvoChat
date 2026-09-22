@@ -25,6 +25,6 @@ bool user_init(User* user, const char* username, int socket_fd);
  
 const char* user_status_to_string(User_Status status);
  
-bool user_status_from_string(const char *text, User_Status *out_status);
+bool user_status_from_string(const char* text, User_Status* out_status);
  
 #endif /* USER_H */

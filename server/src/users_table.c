@@ -136,11 +136,11 @@ bool users_table_change_status_by_client_fd(
     return exists;
 }
 
-bool users_table_remove(Users_Table *table, const char *username)
+bool users_table_remove(Users_Table* table, const char* username)
 {
     g_mutex_lock(&table->mutex);
 
-    User *found = g_hash_table_lookup(table->table, username);
+    User* found = g_hash_table_lookup(table->table, username);
     if (found == NULL)
     {
         g_mutex_unlock(&table->mutex);
@@ -179,6 +179,7 @@ void users_table_iter_end(Users_Table_Iter* iter)
 {
     g_mutex_unlock(&iter->table->mutex);
 }
+
 typedef struct
 {
     User_Visitor visitor;
@@ -189,11 +190,11 @@ For_Each_Adapter;
 static void for_each_adapter(gpointer key, gpointer value, gpointer user_data)
 {
     (void)key;
-    For_Each_Adapter *adapter = (For_Each_Adapter*)user_data;
+    For_Each_Adapter* adapter = (For_Each_Adapter*)user_data;
     adapter->visitor((User*)value, adapter->context);
 }
  
-void users_table_for_each(Users_Table *table, User_Visitor visitor, void *context)
+void users_table_for_each(Users_Table* table, User_Visitor visitor, void* context)
 {
     For_Each_Adapter adapter = { .visitor = visitor, .context = context };
  

@@ -57,7 +57,7 @@ Test(message_to_json, invite_with_usernames_array)
     msg.type = MESSAGE_TYPE_INVITE;
     msg.roomname = "Sala 1";
 
-    char *usernames[] = {"miguel", "diaz", "canel"};
+    char* usernames[] = {"miguel", "diaz", "canel"};
     msg.usernames = usernames;
     msg.usernames_count = 3;
 

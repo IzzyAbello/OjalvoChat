@@ -11,6 +11,8 @@ server_lib = library (
     'users_table.c',
     'message.c',
     'message_handler.c',
+    'room.c',
+    'room_table.c',
     dependencies: [threads_dep, glib_dep, cjson_dep]
 )
 

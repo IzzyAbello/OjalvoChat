@@ -48,6 +48,22 @@ if criterion_dep.found()
         link_with: server_lib
     )
     test('users_table_concurrency', test_users_table_concurrency)
+
+    test_room = executable (
+        'test_room',
+        'test_room.c',
+        dependencies: [criterion_dep, glib_dep],
+        link_with: server_lib
+    )
+    test('room', test_room)
+
+    test_room_table = executable (
+        'test_room_table',
+        'test_room_table.c',
+        dependencies: [criterion_dep, glib_dep],
+        link_with: server_lib
+    )
+    test('room_table', test_room_table)
 else
     warning('Criterion no encontrado: los test no compilarán.\nPor favor instale: \'libcriterion-dev\'.')
 endif

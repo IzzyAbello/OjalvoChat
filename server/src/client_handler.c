@@ -19,7 +19,7 @@ void* handle_client(void* arg)
     free(client_args);
  
     Message_Buffer* buffer = malloc(sizeof(Message_Buffer));
-    char *message = malloc(SERVER_BUFFER_SIZE);
+    char* message = malloc(SERVER_BUFFER_SIZE);
  
     if (buffer == NULL || message == NULL)
     {

@@ -35,7 +35,7 @@ static void show_server_help(void)
     printf("  -h, --help                 Muestra esta ayuda\n");
 }
 
-int main(int argc, char const *argv[])
+int main(int argc, char const* argv[])
 {
     Server_Options options = server_parse_args(argc, argv);
 
