@@ -22,6 +22,7 @@ static Message_Type parse_message_type(const char* type_str)
     if (strcmp(type_str, "PUBLIC_TEXT") == 0)      return MESSAGE_TYPE_PUBLIC_TEXT;
     if (strcmp(type_str, "NEW_ROOM") == 0)         return MESSAGE_TYPE_NEW_ROOM;
     if (strcmp(type_str, "INVITE") == 0)           return MESSAGE_TYPE_INVITE;
+    if (strcmp(type_str, "INVITATION") == 0)       return MESSAGE_TYPE_INVITATION;
     if (strcmp(type_str, "JOIN_ROOM") == 0)        return MESSAGE_TYPE_JOIN_ROOM;
     if (strcmp(type_str, "ROOM_USERS") == 0)       return MESSAGE_TYPE_ROOM_USERS;
     if (strcmp(type_str, "ROOM_TEXT") == 0)        return MESSAGE_TYPE_ROOM_TEXT;
@@ -50,6 +51,7 @@ static char* message_type_to_string (const Message_Type type)
     if (type == MESSAGE_TYPE_PUBLIC_TEXT)      return strdup("PUBLIC_TEXT");
     if (type == MESSAGE_TYPE_NEW_ROOM)         return strdup("NEW_ROOM");
     if (type == MESSAGE_TYPE_INVITE)           return strdup("INVITE");
+    if (type == MESSAGE_TYPE_INVITATION)       return strdup("INVITATION");
     if (type == MESSAGE_TYPE_JOIN_ROOM)        return strdup("JOIN_ROOM");
     if (type == MESSAGE_TYPE_ROOM_USERS)       return strdup("ROOM_USERS");
     if (type == MESSAGE_TYPE_ROOM_TEXT)        return strdup("ROOM_TEXT");
