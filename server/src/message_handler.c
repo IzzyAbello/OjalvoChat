@@ -26,7 +26,6 @@ typedef struct
 }
 Remove_Data_Context;
 
-
 static void room_remove_data(Room* room, void* context)
 {
     Remove_Data_Context* ctx = context;
@@ -112,6 +111,27 @@ static bool process_disconnect(Server* server, int client_fd)
     return true;
 }
 
+static bool send_invalid_and_disconnect(Server* server, int client_fd)
+{
+    Message invalid;
+    message_init(&invalid);
+    invalid.type = MESSAGE_TYPE_RESPONSE;
+    invalid.operation = strdup("INVALID");
+    invalid.result = strdup("INVALID");
+
+    if (invalid.operation == NULL || invalid.result == NULL)
+    {
+        message_destroy(&invalid);
+        return false;
+    }
+
+    server_send(server, client_fd, &invalid);
+
+    message_destroy(&invalid);
+
+    return process_disconnect(server, client_fd);
+}
+
 static bool process_identify(
     Server* server,
     const Message* msg_in,
@@ -132,7 +152,7 @@ static bool process_identify(
     if (users_table_find_by_client_fd(&server->users, client_fd, &user))
     {
         if (strcmp(user.username, username) != 0)
-            return process_disconnect(server, client_fd);
+            return send_invalid_and_disconnect(server, client_fd);
         //ignorar
         return true;
     }
@@ -243,7 +263,7 @@ static bool process_status(
         }
         return true;
     }
-    else return process_disconnect(server, client_fd);
+    else return send_invalid_and_disconnect(server, client_fd);
 }
 
 static bool process_users(Server* server, int client_fd)
@@ -605,9 +625,9 @@ static bool process_invite(
 
             message_destroy(&invitation);
         }
-        else return process_disconnect(server, client_fd);
+        else return send_invalid_and_disconnect(server, client_fd);
     }
-    else return process_disconnect(server, client_fd);
+    else return send_invalid_and_disconnect(server, client_fd);
 
     message_destroy(&response);
     return true;
@@ -728,7 +748,7 @@ static bool process_join_room(
             } 
         }
     }
-    else return process_disconnect(server, client_fd);
+    else return send_invalid_and_disconnect(server, client_fd);
 
     return true;
 }
@@ -836,7 +856,7 @@ static bool process_room_users(
             if (sent < 0) return process_disconnect(server, client_fd);
         }
     }
-    else return process_disconnect(server, client_fd);
+    else return send_invalid_and_disconnect(server, client_fd);
     return true;
 }
 
@@ -931,7 +951,7 @@ static bool process_room_text(
             if (sent < 0) return process_disconnect(server, client_fd);
         }
     }
-    else return process_disconnect(server, client_fd);
+    else return send_invalid_and_disconnect(server, client_fd);
     return true;    
 }
 
@@ -1028,7 +1048,7 @@ static bool process_leave_room(
             return true;
         }
     }
-    else return process_disconnect(server, client_fd);
+    else return send_invalid_and_disconnect(server, client_fd);
 
     return true;
 }
@@ -1052,7 +1072,22 @@ bool message_handler_process(
         return process_identify(server, msg_in, client_fd);
 
     if (!users_table_contains_by_client_fd(&server->users, client_fd))
-        return process_disconnect(server, client_fd);
+    {
+        Message not_identified;
+        message_init(&not_identified);
+        not_identified.type = MESSAGE_TYPE_RESPONSE;
+        not_identified.operation = strdup("INVALID");
+        not_identified.result = strdup("NOT_IDENTIFIED");
+
+        if (not_identified.operation == NULL || not_identified.result == NULL)
+            return false;
+
+        server_send(server, client_fd, &not_identified);
+        
+        process_disconnect(server, client_fd);
+
+        return true;
+    }
 
     switch (msg_in->type)
     {

@@ -51,6 +51,17 @@ void* handle_client(void* arg)
             message_init(&msg_in);
             if (!message_from_json(message, &msg_in))
             {
+                Message invalid;
+                message_init(&invalid);
+                invalid.type = MESSAGE_TYPE_RESPONSE;
+                invalid.operation = strdup("INVALID");
+                invalid.result = strdup("INVALID");
+
+                if (invalid.operation == NULL || invalid.result == NULL)
+                    return NULL;
+
+                server_send(server, client_fd, &invalid);
+
                 if (users_table_contains_by_client_fd(&server->users, client_fd))
                 {
                     Message disconnect_msg;
@@ -60,8 +71,8 @@ void* handle_client(void* arg)
                     message_handler_process(server, &disconnect_msg, client_fd);
                     message_destroy(&disconnect_msg);
                 }
-
-                server_disconnect_client(server, client_fd);
+                else server_disconnect_client(server, client_fd);
+                message_destroy(&invalid);
                 return NULL;
             }
 
