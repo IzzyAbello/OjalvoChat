@@ -51,8 +51,7 @@ void* handle_client(void* arg)
             message_init(&msg_in);
             if (!message_from_json(message, &msg_in))
             {
-                User* user = NULL;
-                if (users_table_find_by_client_fd(&server->users, client_fd, user))
+                if (users_table_contains_by_client_fd(&server->users, client_fd))
                 {
                     Message disconnect_msg;
                     message_init(&disconnect_msg);

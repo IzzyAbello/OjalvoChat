@@ -10,6 +10,30 @@ typedef struct
 }
 Send_Context;
 
+typedef struct
+{
+    User* user;
+    bool is_in_room;
+    bool is_empty_now;
+    cJSON* users_obj;
+    User_Status new_status;
+}
+Room_Visitor_Context;
+
+typedef struct
+{
+    User* user;
+}
+Remove_Data_Context;
+
+
+static void room_remove_data(Room* room, void* context)
+{
+    Remove_Data_Context* ctx = context;
+    users_table_remove(&room->guests, ctx->user->username);
+    users_table_remove(&room->members, ctx->user->username);
+}
+
 static void send_if_is_not_self (User* user, void* context)
 {
     Send_Context* ctx = context;
@@ -56,19 +80,9 @@ static void notify_all_but_self (
         User user;
         if (users_table_find_by_client_fd(users, fds_to_disconnect[i], &user))
         {
-            // ELIMINAR DE LA SALA <---
-            /* 
-                Tengo que implementar dentro de la clase room_table
-                un metodo de eliminar de todas las salas. Que haga 
-                un lock y a un forach mientras busca.
-            */
-
-            // ELIMINAR DE LA LISTA GENERAL
-            users_table_remove(users, user.username);
-
-
-            // ESTAS DOS COSAS PUEDEN SALIR EN UN STATIC REMOVE_FROM_DATA
-            // UPDDATE DE STATE
+           Remove_Data_Context rm_ctx = { .user = &user };
+           room_table_for_each(&server->rooms, room_remove_data, &rm_ctx);
+           users_table_remove(users, user.username);
         }
         i++;
     }
@@ -86,7 +100,8 @@ static bool process_disconnect(Server* server, int client_fd)
 
         notify_all_but_self(server, &server->users, &notify_users, client_fd);
 
-        // REMOVE DE LAS SALAS
+        Remove_Data_Context ctx = {.user = &user }; 
+        room_table_for_each(&server->rooms, room_remove_data, &ctx);
 
         users_table_remove(&server->users, user.username);
 
@@ -109,8 +124,9 @@ static bool process_identify(
         return false;
     }
 
-    char* username = strdup(msg_in->username);
+    char* username = strndup(msg_in->username, 8);
 
+    if (username == NULL) return false;
 
     User user;
     if (users_table_find_by_client_fd(&server->users, client_fd, &user))
@@ -148,6 +164,7 @@ static bool process_identify(
             Message response;
             message_init(&response);
             response.type = MESSAGE_TYPE_RESPONSE;
+            response.operation = strdup("IDENTIFY");
             response.result = strdup("SUCCESS");
             response.extra = strdup(username);
             
@@ -173,6 +190,21 @@ static bool process_identify(
     }
 }
 
+static void room_update_status(Room* room, void* context)
+{
+    Room_Visitor_Context* ctx = context;
+    users_table_change_status_by_client_fd(
+        &room->members,
+        ctx->user->socket_fd,
+        ctx->new_status
+    );
+    users_table_change_status_by_client_fd(
+        &room->guests,
+        ctx->user->socket_fd,
+        ctx->new_status
+    );
+}
+
 static bool process_status(
     Server* server,
     const Message* msg_in,
@@ -195,6 +227,9 @@ static bool process_status(
             {
                 users_table_change_status_by_client_fd(&server->users, client_fd, msg_status);
                 
+                Room_Visitor_Context ctx = {.user = &user, .new_status = msg_status};
+                room_table_for_each(&server->rooms, room_update_status, &ctx);
+
                 Message notify_users;
                 message_init(&notify_users);
                 notify_users.type = MESSAGE_TYPE_NEW_STATUS;
@@ -250,6 +285,13 @@ static bool process_text(
     User user_to;
     if (users_table_find_by_username(&server->users, msg_in->username, &user_to))
     {
+        User user_from_cmp;
+        if(users_table_find_by_client_fd(&server->users, client_fd, &user_from_cmp))
+        {
+            if (strcmp(user_to.username, user_from_cmp.username) == 0)
+                return true;               
+        }
+
         Message text_from;
         message_init(&text_from);
         text_from.type = MESSAGE_TYPE_TEXT_FROM;
@@ -334,35 +376,27 @@ static bool process_public_text(
     return true;
 }
 
-typedef struct
-{
-    User* user;
-    bool is_in_room;
-    bool is_empty_now;
-    cJSON* users_obj;
-
-}
-Room_Visitor_Context;
-
 static void room_add_creator (Room* room, void* context)
 {
     Room_Visitor_Context* ctx = context;
-    users_table_add
+    users_table_add_with_status
     (
         &room->members,
         ctx->user->username,
-        ctx->user->socket_fd
+        ctx->user->socket_fd,
+        ctx->user->status
     );
 }
 
 static void room_add_to_guests (Room* room, void* context)
 {
     Room_Visitor_Context* ctx = context;
-    users_table_add
+    users_table_add_with_status
     (
         &room->guests,
         ctx->user->username,
-        ctx->user->socket_fd
+        ctx->user->socket_fd,
+        ctx->user->status
     );
 }
 
@@ -374,11 +408,15 @@ static bool process_new_room(
 {
     if (msg_in->roomname == NULL) return false;
 
+    char* rm_name = strndup(msg_in->roomname, 16); 
+
+    if (rm_name == NULL) return false;
+
     Message response;
     message_init(&response);
     response.type = MESSAGE_TYPE_RESPONSE;
     response.operation = strdup("NEW_ROOM");
-    response.extra = strdup(msg_in->roomname);
+    response.extra = strdup(rm_name);
 
     if (response.operation == NULL || response.extra == NULL)
     {
@@ -406,16 +444,16 @@ static bool process_new_room(
             return false;
         }
 
-        if(room_table_add(&server->rooms, msg_in->roomname))
+        if(room_table_add(&server->rooms, rm_name))
         {
             User room_creator;
             if(users_table_find_by_client_fd(&server->users, client_fd, &room_creator))
             {
-                Room_Visitor_Context ctx = { .user = &room_creator };
+                Room_Visitor_Context ctx = { .user = &room_creator, .new_status = room_creator.status };
                 room_table_with
                 (
                     &server->rooms,
-                    msg_in->roomname,
+                    rm_name,
                     room_add_creator,
                     &ctx
                 );
@@ -548,7 +586,11 @@ static bool process_invite(
 
             for (int i = 0; i < msg_in->usernames_count; i++)
             {
-                Room_Visitor_Context ctx = { .user = &invited_users[i], .is_in_room = false }; 
+                Room_Visitor_Context ctx = { 
+                    .user = &invited_users[i],
+                    .is_in_room = false, 
+                    .new_status = invited_users[i].status
+                }; 
                 room_table_with(&server->rooms, msg_in->roomname, room_is_a_member, &ctx);
                 room_table_with(&server->rooms, msg_in->roomname, room_is_a_guest, &ctx);
 
@@ -575,7 +617,7 @@ static void room_from_guest_to_member(Room* room, void* context)
 {
     Room_Visitor_Context* ctx = context;
     users_table_remove(&room->guests, ctx->user->username);
-    users_table_add(&room->members, ctx->user->username, ctx->user->socket_fd);
+    users_table_add_with_status(&room->members, ctx->user->username, ctx->user->socket_fd, ctx->user->status);
 }
 
 static void room_notify_members(Room* room, void* context)

@@ -20,6 +20,8 @@ void users_table_destroy(Users_Table* table);
 
 bool users_table_add(Users_Table* table, const char* username, int socket_fd);
 
+bool users_table_add_with_status(Users_Table* table, const char* username, int socket_fd, User_Status status);
+
 bool users_table_contains_by_username(Users_Table* table, const char* username);
 
 bool users_table_contains_by_client_fd(Users_Table* table, const int client_fd);

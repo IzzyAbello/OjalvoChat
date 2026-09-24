@@ -44,6 +44,35 @@ bool users_table_add(Users_Table* table, const char* username, int socket_fd)
     return true;
 }
 
+bool users_table_add_with_status(Users_Table* table, const char* username, int socket_fd, User_Status status)
+{
+    User* user = malloc(sizeof(User));
+    if (user == NULL) return false;
+
+    if (!user_init(user, username, socket_fd))
+    {
+        free(user);
+        return false;
+    }
+
+    user->status = status;
+
+    g_mutex_lock(&table->mutex);
+
+    if (g_hash_table_contains(table->table, username))
+    {
+        g_mutex_unlock(&table->mutex);
+        free(user);
+        return false;
+    }
+
+    g_hash_table_insert(table->table, g_strdup(username), user);
+    g_hash_table_insert(table->table_by_fd, GINT_TO_POINTER(socket_fd), user);
+
+    g_mutex_unlock(&table->mutex);
+    return true;
+}
+
 
 bool users_table_contains_by_username(Users_Table* table, const char* username)
 {

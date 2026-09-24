@@ -119,9 +119,10 @@ bool message_from_json(const char* json_raw, Message* out_msg)
     message_init(out_msg);
 
     cJSON* json = cJSON_Parse(json_raw);
-    if (json == NULL) return false;
+    if (json == NULL || !cJSON_IsObject(json)) return false;
 
     cJSON* type_item = cJSON_GetObjectItemCaseSensitive(json, "type");
+    if (type_item == NULL) return false;
     if (cJSON_IsString(type_item) && (type_item->valuestring != NULL))
         out_msg->type = parse_message_type(type_item->valuestring);
 
