@@ -1,7 +1,5 @@
 #include "message_handler.h"
 
-#include <stdio.h>
-
 typedef struct 
 {
     Server* server;
@@ -665,7 +663,7 @@ static bool process_join_room(
                     .message = &joined_room,
                     .client_fd = client_fd
                 };
-                room_table_for_each(&server->rooms, room_notify_members, &ctx);
+                room_table_with(&server->rooms, msg_in->roomname, room_notify_members, &ctx);
                 
                 return true;
             }   
@@ -799,6 +797,99 @@ static bool process_room_users(
     return true;
 }
 
+
+static bool process_room_text(
+    Server* server,
+    const Message* msg_in,
+    int client_fd
+)
+{
+    if (msg_in->roomname == NULL || msg_in->text == NULL)
+        return false;
+        
+    Message response;
+    message_init(&response);
+    response.type = MESSAGE_TYPE_RESPONSE;
+    response.operation = strdup("ROOM_TEXT");
+    response.extra = strdup(msg_in->roomname);
+
+    if (response.operation == NULL || response.extra == NULL)
+    {
+        message_destroy(&response);
+        return false;
+    }
+
+    if (!room_table_contains(&server->rooms, msg_in->roomname))
+    {
+        response.result = strdup("NO_SUCH_ROOM");
+
+        if (response.result == NULL)
+        {
+            message_destroy(&response);
+            return false;
+        }
+
+        int sent = server_send(server, client_fd, &response);
+
+        message_destroy(&response);
+
+        if (sent < 0) return process_disconnect(server, client_fd);
+
+        return true;
+    }
+
+
+
+    User user_from;
+    if (users_table_find_by_client_fd(&server->users, client_fd, &user_from))
+    {
+        Room_Visitor_Context ctx = { .user = &user_from, .is_in_room = false };
+        room_table_with(&server->rooms, msg_in->roomname, room_is_a_member, &ctx);
+
+        if (ctx.is_in_room)
+        {
+            Message room_text;
+            message_init(&room_text);
+            room_text.type = MESSAGE_TYPE_ROOM_TEXT_FROM;
+            room_text.roomname = strdup(msg_in->roomname);
+            room_text.username = strdup(user_from.username);
+
+            if (room_text.roomname == NULL || room_text.username == NULL)
+            {
+                message_destroy(&room_text);
+                return false;
+            }
+
+            Send_Context ctx = {
+                .server = server,
+                .message = &room_text,
+                .client_fd = client_fd
+            };
+            room_table_with(&server->rooms, msg_in->roomname, room_notify_members, &ctx);
+
+            message_destroy(&room_text);
+
+            return true;
+        }
+        else
+        {
+            response.result = strdup("NOT_JOINED");
+
+            if (response.result == NULL)
+            {
+                message_destroy(&response);
+                return false;
+            }
+
+            int sent = server_send(server, client_fd, &response);
+            message_destroy(&response);
+            if (sent < 0) return process_disconnect(server, client_fd);
+        }
+    }
+    else return process_disconnect(server, client_fd);
+    return true;    
+}
+
 bool message_handler_process(
     Server* server,
     const Message* msg_in,
@@ -837,7 +928,9 @@ bool message_handler_process(
         case MESSAGE_TYPE_JOIN_ROOM:
             return process_join_room(server, msg_in, client_fd);
         case MESSAGE_TYPE_ROOM_USERS:
-            return process_room_users(server, msg_in, client_fd);    
+            return process_room_users(server, msg_in, client_fd);
+        case MESSAGE_TYPE_ROOM_TEXT:
+            return process_room_text(server, msg_in, client_fd);   
         default:
             break;
     }
