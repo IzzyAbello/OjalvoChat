@@ -338,6 +338,7 @@ typedef struct
 {
     User* user;
     bool is_in_room;
+    bool is_empty_now;
     cJSON* users_obj;
 
 }
@@ -838,8 +839,6 @@ static bool process_room_text(
         return true;
     }
 
-
-
     User user_from;
     if (users_table_find_by_client_fd(&server->users, client_fd, &user_from))
     {
@@ -853,8 +852,12 @@ static bool process_room_text(
             room_text.type = MESSAGE_TYPE_ROOM_TEXT_FROM;
             room_text.roomname = strdup(msg_in->roomname);
             room_text.username = strdup(user_from.username);
+            room_text.text = strdup(msg_in->text);
 
-            if (room_text.roomname == NULL || room_text.username == NULL)
+            if (room_text.roomname == NULL ||
+                room_text.username == NULL ||
+                room_text.text == NULL
+            )
             {
                 message_destroy(&room_text);
                 return false;
@@ -888,6 +891,104 @@ static bool process_room_text(
     }
     else return process_disconnect(server, client_fd);
     return true;    
+}
+
+static void room_leave(Room* room, void* context)
+{
+    Room_Visitor_Context* ctx = context;
+    
+    users_table_remove(&room->members, ctx->user->username);
+
+    if (g_hash_table_size(room->members.table) == 0)
+        ctx->is_empty_now = true;
+}
+
+static bool process_leave_room(
+    Server* server,
+    const Message* msg_in,
+    int client_fd
+)
+{
+    if (msg_in->roomname == NULL) return false;
+
+    Message response;
+    message_init(&response);
+    response.type = MESSAGE_TYPE_RESPONSE;
+    response.operation = strdup("LEAVE_ROOM");
+    response.extra = strdup(msg_in->roomname);
+
+    if (response.operation == NULL || response.extra == NULL)
+    {
+        message_destroy(&response);
+        return false;
+    }
+
+    if (!room_table_contains(&server->rooms, msg_in->roomname))
+    {
+        response.result = strdup("NO_SUCH_ROOM");
+
+        if (response.result == NULL)
+        {
+            message_destroy(&response);
+            return false;
+        }
+
+        int sent = server_send(server, client_fd, &response);
+
+        message_destroy(&response);
+
+        if (sent < 0) return process_disconnect(server, client_fd);
+
+        return true;
+    }
+
+    User user_from;
+    if (users_table_find_by_client_fd(&server->users, client_fd, &user_from))
+    {
+        Room_Visitor_Context ctx = { .user = &user_from, .is_in_room = false, .is_empty_now = false };
+        room_table_with(&server->rooms, msg_in->roomname, room_is_a_member, &ctx);
+        if (ctx.is_in_room)
+        {
+            room_table_with(&server->rooms, msg_in->roomname, room_leave, &ctx);
+
+            if (ctx.is_empty_now) room_table_remove(&server->rooms, msg_in->roomname);
+
+            Message left_room;
+            message_init(&left_room);
+            left_room.type = MESSAGE_TYPE_LEFT_ROOM;
+            left_room.roomname = strdup(msg_in->roomname);
+            left_room.username = strdup(user_from.username);
+
+            Send_Context ctx = {
+                .server = server,
+                .message = &left_room,
+                .client_fd = client_fd
+            };
+
+            room_table_with(&server->rooms, msg_in->roomname, room_notify_members, &ctx);
+
+            return true;
+        }
+        else
+        {
+            response.result = strdup("NOT_JOINED");
+
+            if (response.result == NULL)
+            {
+                message_destroy(&response);
+                return false;
+            }
+
+            int sent = server_send(server, client_fd, &response);
+            message_destroy(&response);
+            if (sent < 0) return process_disconnect(server, client_fd);
+
+            return true;
+        }
+    }
+    else return process_disconnect(server, client_fd);
+
+    return true;
 }
 
 bool message_handler_process(
@@ -931,6 +1032,8 @@ bool message_handler_process(
             return process_room_users(server, msg_in, client_fd);
         case MESSAGE_TYPE_ROOM_TEXT:
             return process_room_text(server, msg_in, client_fd);   
+        case MESSAGE_TYPE_LEAVE_ROOM:
+            return process_leave_room(server, msg_in, client_fd);     
         default:
             break;
     }
