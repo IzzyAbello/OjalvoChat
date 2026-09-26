@@ -1,5 +1,20 @@
 # OjalvoChat
-Primer Proyecto MyP-CS-FC-UNAM
+Primer Proyecto de Modelado y Programación CS-FC-UNAM
+
+Autor: Isidro A. Abelló García
+
+Profesor: Dr. Canek Pelaez Valdes
+
+Servidor y cliente de un chat vía TCP.
+
+## Requisitos
+
+Se requieren las siguientes bibliotecas:
+* Threads
+* G-Lib 2.0
+* cJSON
+* Criterion (sólo para ejecutar tests del servidor)
+* .NET 10.0
 
 ## Comandos del Servidor
 
@@ -43,5 +58,5 @@ dotnet build
 ### Ejecutar
 
 ```bash/fish
-dotnet run [PUERTO] [CANTIDAD DE CLIENTES]
+dotnet run [PUERTO] [DIRECCIÓN IP]
 ```
